@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio MOIC & IRR Modeler</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3247;
+    --text: #e4e4e7;
+    --text-muted: #9ca3af;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    font-size: 12px;
+  }
+  th, td {
+    padding: 8px 12px;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: var(--surface2);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  td:first-child, th:first-child { text-align: left; position: sticky; left: 0; z-index: 1; background: inherit; }
+  tr:nth-child(even) td { background: var(--surface); }
+  tr:nth-child(odd) td { background: var(--surface2); }
+  tr:nth-child(even) td:first-child { background: var(--surface); }
+  tr:nth-child(odd) td:first-child { background: var(--surface2); }
+  tr.total-row td {
+    background: #1e2235 !important;
+    font-weight: 700;
+    border-top: 2px solid var(--accent);
+  }
+  tr.total-row td:first-child { background: #1e2235 !important; }
+  .quarter-group { border-left: 2px solid var(--border); }
+  .quarter-header {
+    background: var(--surface2);
+    text-align: center !important;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    position: relative;
+  }
+  .quarter-header .remove-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  .quarter-header .remove-btn:hover { color: var(--red); background: rgba(239,68,68,0.15); }
+  .sub-header th { font-size: 10px; }
+  input.pps-input {
+    width: 80px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: right;
+  }
+  input.pps-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+  }
+  .moic { font-weight: 600; }
+  .moic.positive { color: var(--green); }
+  .moic.negative { color: var(--red); }
+  .moic.neutral { color: var(--yellow); }
+  .irr { font-weight: 500; }
+  .irr.positive { color: var(--green); }
+  .irr.negative { color: var(--red); }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  button.action-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.action-btn:hover { opacity: 0.9; }
+  button.action-btn.secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  button.action-btn.secondary:hover { background: var(--border); }
+  .share-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--accent);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .share-toast.show { opacity: 1; transform: translateY(0); }
+  .weight-col { color: var(--text-muted); }
+  .entry-col { color: var(--text-muted); }
+  .company-name { font-weight: 600; color: var(--text); }
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .charts-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 16px 12px;
+  }
+  .chart-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .chart-canvas { display: block; width: 100%; }
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .chart-legend-item { display: flex; align-items: center; gap: 5px; }
+  .chart-legend-line {
+    width: 18px; height: 2px; display: inline-block; border-radius: 1px;
+  }
+  .chart-legend-line.dashed {
+    background: repeating-linear-gradient(90deg, currentColor 0 4px, transparent 4px 8px);
+    height: 2px;
+  }
+  .info-panel {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .info-panel strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<h1>Artea Secondaries I — Portfolio Modeler</h1>
+<p class="subtitle">Deal-level MOIC & IRR projections with dynamic PPS assumptions</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:var(--green)"></span> MOIC / TVPI &ge; 1.8x / IRR &ge; 30%</div>
+  <div class="legend-item"><span class="legend-dot" style="background:var(--red)"></span> MOIC / TVPI &lt; 1.8x / IRR &lt; 30%</div>
+</div>
+
+<div class="toolbar">
+  <button class="action-btn" onclick="addQuarter()">+ Add Quarter</button>
+  <button class="action-btn secondary" onclick="resetDefaults()">Reset Defaults</button>
+  <button class="action-btn secondary" onclick="copyShareLink()" title="Copy a shareable URL with your current PPS inputs">&#128279; Share Link</button>
+</div>
+<div id="share-toast" class="share-toast">Link copied to clipboard!</div>
+
+<div class="charts-wrapper">
+  <div class="chart-panel">
+    <div class="chart-title">TVPI Over Time</div>
+    <canvas id="chart-tvpi" class="chart-canvas" height="200"></canvas>
+    <div class="chart-legend">
+      <div class="chart-legend-item"><span class="chart-legend-line" style="background:var(--accent)"></span> Gross TVPI</div>
+      <div class="chart-legend-item"><span class="chart-legend-line dashed" style="color:var(--accent)"></span> Net TVPI</div>
+    </div>
+  </div>
+  <div class="chart-panel">
+    <div class="chart-title">IRR Over Time</div>
+    <canvas id="chart-irr" class="chart-canvas" height="200"></canvas>
+    <div class="chart-legend">
+      <div class="chart-legend-item"><span class="chart-legend-line" style="background:var(--green)"></span> Gross IRR</div>
+      <div class="chart-legend-item"><span class="chart-legend-line dashed" style="color:var(--green)"></span> Net IRR</div>
+    </div>
+  </div>
+</div>
+
+<div class="table-wrapper">
+  <table id="portfolio-table">
+  </table>
+</div>
+
+<div class="info-panel">
+  <strong>Gross MOIC:</strong> (Total Distributions + Residual Shares Value) / Total Cost Basis<br>
+  <strong>Gross TVPI:</strong> Total Portfolio Fair Value / Total Drawdowns ($82.9M)<br>
+  <strong>Gross IRR:</strong> XIRR across all historical cash flows + projected terminal value at quarter-end date<br>
+  <strong>Net TVPI:</strong> (Gross Value - 20% Carry - Accrued Fees) / Drawdowns | Mgmt fee = 2% p.a. on $88.5M from Q1 24 + 3% additional ($2.7M upfront)<br>
+  <strong>Net IRR:</strong> XIRR on fund-level drawdowns/distributions with terminal = Net NAV (gross value less carry and accrued fees)
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const companies = [
+  {
+    name: "Arctic Wolf",
+    weight: 0.0954,
+    entryPPS: 7.24,
+    totalCost: 7466450,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-01-17", amount: -7466450 },
+    ]
+  },
+  {
+    name: "Chainalysis",
+    weight: 0.0064,
+    entryPPS: 9.60,
+    totalCost: 500007,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-06-28", amount: -500007 },
+    ]
+  },
+  {
+    name: "Databricks",
+    weight: 0.1527,
+    entryPPS: 68.46,
+    totalCost: 12219913,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-05-10", amount: -12119913 },
+      { date: "2024-10-04", amount: -100000 },
+    ]
+  },
+  {
+    name: "Netskope",
+    weight: 0.0992,
+    entryPPS: 10.29,
+    totalCost: 7695139,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2023-03-31", amount: -305412 },
+      { date: "2023-06-30", amount: -305412 },
+      { date: "2023-07-07", amount: -261060 },
+      { date: "2023-07-20", amount: -40800 },
+      { date: "2023-09-29", amount: -305412 },
+      { date: "2023-10-20", amount: -139644 },
+      { date: "2023-12-29", amount: -305412 },
+      { date: "2024-01-26", amount: -40800 },
+      { date: "2024-03-28", amount: -305412 },
+      { date: "2024-06-28", amount: -305412 },
+      { date: "2024-07-08", amount: -326520 },
+      { date: "2024-09-30", amount: -305412 },
+      { date: "2024-10-11", amount: -2693400 },
+      { date: "2024-12-31", amount: -305412 },
+      { date: "2025-03-31", amount: -305412 },
+      { date: "2025-06-30", amount: -305412 },
+      { date: "2025-07-18", amount: -632280 },
+      { date: "2025-09-30", amount: -305412 },
+      { date: "2025-09-30", amount: -103600 },
+    ]
+  },
+  {
+    name: "Canva",
+    weight: 0.1272,
+    entryPPS: 1067.00,
+    totalCost: 10000000,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-06-28", amount: -10000000 },
+    ]
+  },
+  {
+    name: "Cribl",
+    weight: 0.0293,
+    entryPPS: 3.19,
+    totalCost: 2255802,
+    totalDistributions: 600587,
+    cashFlows: [
+      { date: "2024-05-09", amount: -84329 },
+      { date: "2024-05-16", amount: -63247 },
+      { date: "2024-05-02", amount: -2108226 },
+      { date: "2025-11-28", amount: 600587 },
+    ]
+  },
+  {
+    name: "Scale AI",
+    weight: 0.1107,
+    entryPPS: 9.48,
+    totalCost: 8727584,
+    totalDistributions: 16323276,
+    cashFlows: [
+      { date: "2024-06-30", amount: -6030000 },
+      { date: "2025-02-19", amount: -2697584 },
+      { date: "2025-06-20", amount: 100100 },
+      { date: "2025-07-15", amount: 11201795 },
+      { date: "2025-07-17", amount: 4221381 },
+      { date: "2025-09-08", amount: 800000 },
+    ]
+  },
+  {
+    name: "Gusto",
+    weight: 0.0954,
+    entryPPS: 15.83,
+    totalCost: 7535007,
+    totalDistributions: 309902,
+    cashFlows: [
+      { date: "2024-01-17", amount: -4535007 },
+      { date: "2024-06-28", amount: -3000000 },
+      { date: "2025-04-10", amount: 309902 },
+    ]
+  },
+  {
+    name: "Grafana",
+    weight: 0.1336,
+    entryPPS: 8.45,
+    totalCost: 10480000,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-01-17", amount: -7480000 },
+      { date: "2024-06-28", amount: -3000000 },
+    ]
+  },
+  {
+    name: "Stripe",
+    weight: 0.1501,
+    entryPPS: 35.66,
+    totalCost: 12011250,
+    totalDistributions: 0,
+    cashFlows: [
+      { date: "2024-01-17", amount: -7511250 },
+      { date: "2024-06-28", amount: -4500000 },
+    ]
+  }
+];
+
+// Default quarters with pre-filled PPS values from the XLS
+const defaultQuarters = [
+  {
+    label: "Q4 25'",
+    endDate: "2025-12-31",
+    pps: {
+      "Arctic Wolf": 8.50,
+      "Chainalysis": 9.50,
+      "Databricks": 190.00,
+      "Netskope": 17.50,
+      "Canva": 1875.00,
+      "Cribl": 4.90,
+      "Scale AI": 5.00,
+      "Gusto": 25.50,
+      "Grafana": 11.60,
+      "Stripe": 52.00
+    }
+  },
+  {
+    label: "Q1 26'",
+    endDate: "2026-03-31",
+    pps: {
+      "Arctic Wolf": 8.50,
+      "Chainalysis": 9.50,
+      "Databricks": 190.00,
+      "Netskope": 12.50,
+      "Canva": 1875.00,
+      "Cribl": 4.90,
+      "Scale AI": 5.00,
+      "Gusto": 25.50,
+      "Grafana": 15.00,
+      "Stripe": 57.00
+    }
+  },
+  {
+    label: "Q2 26'",
+    endDate: "2026-06-30",
+    pps: {
+      "Arctic Wolf": 8.50,
+      "Chainalysis": 9.50,
+      "Databricks": 190.00,
+      "Netskope": 15.00,
+      "Canva": 1875.00,
+      "Cribl": 5.50,
+      "Scale AI": 5.00,
+      "Gusto": 25.50,
+      "Grafana": 15.00,
+      "Stripe": 65.00
+    }
+  },
+  {
+    label: "Q3 26'",
+    endDate: "2026-09-30",
+    pps: {
+      "Arctic Wolf": 8.50,
+      "Chainalysis": 9.50,
+      "Databricks": 240.00,
+      "Netskope": 15.00,
+      "Canva": 2100.00,
+      "Cribl": 5.50,
+      "Scale AI": 5.00,
+      "Gusto": 25.50,
+      "Grafana": 15.00,
+      "Stripe": 72.00
+    }
+  },
+  {
+    label: "Q4 26'",
+    endDate: "2026-12-31",
+    pps: {
+      "Arctic Wolf": 8.50,
+      "Chainalysis": 9.50,
+      "Databricks": 240.00,
+      "Netskope": 15.00,
+      "Canva": 2100.00,
+      "Cribl": 5.50,
+      "Scale AI": 5.00,
+      "Gusto": 25.50,
+      "Grafana": 15.00,
+      "Stripe": 78.00
+    }
+  }
+];
+
+// Fund-level constants
+const TOTAL_COMMITMENTS = 88486100;
+const TOTAL_DRAWDOWNS = 82868676;
+const TOTAL_FUND_DISTRIBUTIONS = 9100000; // DPI = 9,100,000 / 82,868,676 = 0.1098x
+const DPI = TOTAL_FUND_DISTRIBUTIONS / TOTAL_DRAWDOWNS; // ~0.11x
+const FUND_START = new Date("2024-01-01"); // Fund started investing Q1 24
+const MGMT_FEE_RATE = 0.02;       // 2% p.a. on commitments
+const CARRY_RATE = 0.20;           // 20% carry on profits
+const ADDITIONAL_FEE_RATE = 0.03;  // 3% of commitments in additional fees
+const TOTAL_ADDITIONAL_FEES = TOTAL_COMMITMENTS * ADDITIONAL_FEE_RATE; // $2,654,583 (upfront)
+
+/**
+ * Accrued mgmt fees as of a given date.
+ * 2% p.a. on commitments, accruing from fund start (Q1 24).
+ * e.g. Q4 25' (31/12/2025) = 2.0 years × 2% × $88.5M
+ *      Q1 26' (31/03/2026) = 2.25 years × 2% × $88.5M
+ */
+function calcAccruedFees(quarterEndDate) {
+  const endDate = new Date(quarterEndDate);
+  const yearsElapsed = (endDate - FUND_START) / (365.25 * 24 * 60 * 60 * 1000);
+  const mgmtFees = TOTAL_COMMITMENTS * MGMT_FEE_RATE * yearsElapsed;
+  return mgmtFees + TOTAL_ADDITIONAL_FEES;
+}
+
+// Fund-level drawdown cash flows (for Net IRR XIRR calc)
+const fundDrawdowns = [
+  { date: "2023-12-20", amount: -9160489 },
+  { date: "2024-03-01", amount: -24124460 },
+  { date: "2024-04-22", amount: -37975 },
+  { date: "2024-05-13", amount: -5000000 },
+  { date: "2024-07-01", amount: -10707950 },
+  { date: "2024-09-09", amount: -19938798 },
+  { date: "2024-09-24", amount: 8000000 },
+  { date: "2025-01-08", amount: -6138050 },
+  { date: "2025-03-28", amount: -12488050 },
+  { date: "2025-06-06", amount: -3272728 },
+  { date: "2025-08-19", amount: 9100000 },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let quarters = JSON.parse(JSON.stringify(defaultQuarters));
+
+// ============================================================
+// FINANCIAL CALCULATIONS
+// ============================================================
+
+/**
+ * Correct MOIC: (Total Distributions + Residual Value) / Total Cost
+ * Residual Value = totalCost * (currentPPS / entryPPS)
+ */
+function calcMOIC(company, currentPPS) {
+  if (!currentPPS && currentPPS !== 0) return null;
+  const residualValue = company.totalCost * (currentPPS / company.entryPPS);
+  return (company.totalDistributions + residualValue) / company.totalCost;
+}
+
+/**
+ * XIRR calculation using Newton-Raphson method.
+ * cashFlows: array of {date: "YYYY-MM-DD", amount: number}
+ * Positive = inflow (distribution/exit), Negative = outflow (investment)
+ */
+function xirr(cashFlows) {
+  if (!cashFlows || cashFlows.length < 2) return null;
+
+  const dates = cashFlows.map(cf => new Date(cf.date));
+  const amounts = cashFlows.map(cf => cf.amount);
+
+  // Check if there's at least one positive and one negative
+  const hasPositive = amounts.some(a => a > 0);
+  const hasNegative = amounts.some(a => a < 0);
+  if (!hasPositive || !hasNegative) return null;
+
+  const d0 = dates[0];
+  const dayDiffs = dates.map(d => (d - d0) / (365.25 * 24 * 60 * 60 * 1000));
+
+  function npv(rate) {
+    let sum = 0;
+    for (let i = 0; i < amounts.length; i++) {
+      const exp = dayDiffs[i];
+      sum += amounts[i] / Math.pow(1 + rate, exp);
+    }
+    return sum;
+  }
+
+  function dnpv(rate) {
+    let sum = 0;
+    for (let i = 0; i < amounts.length; i++) {
+      const exp = dayDiffs[i];
+      if (exp === 0) continue;
+      sum += -exp * amounts[i] / Math.pow(1 + rate, exp + 1);
+    }
+    return sum;
+  }
+
+  // Newton-Raphson with multiple starting guesses
+  const guesses = [0.1, 0.5, 1.0, 2.0, -0.5, 0.01, 5.0, 10.0, -0.9];
+  let bestRate = null;
+  let bestResidual = Infinity;
+
+  for (const guess of guesses) {
+    let rate = guess;
+    let converged = false;
+
+    for (let iter = 0; iter < 200; iter++) {
+      const f = npv(rate);
+      const df = dnpv(rate);
+
+      if (Math.abs(df) < 1e-14) break;
+
+      const step = f / df;
+      rate = rate - step;
+
+      // Bound rate to prevent explosion
+      if (rate <= -1) rate = -0.99;
+      if (rate > 100) rate = 100;
+
+      if (Math.abs(f) < 1e-8) {
+        converged = true;
+        break;
+      }
+    }
+
+    const residual = Math.abs(npv(rate));
+    if (converged && residual < bestResidual && rate > -1 && isFinite(rate)) {
+      bestRate = rate;
+      bestResidual = residual;
+    }
+  }
+
+  return bestRate;
+}
+
+/**
+ * Calculate IRR for a company at a given quarter.
+ * Takes historical cash flows + terminal value at quarter end date.
+ */
+function calcIRR(company, currentPPS, quarterEndDate) {
+  if (!currentPPS && currentPPS !== 0) return null;
+  if (currentPPS === 0) {
+    // If PPS is 0 and no distributions, total loss
+    if (company.totalDistributions === 0) return -1;
+  }
+
+  // Terminal value = totalCost * (currentPPS / entryPPS)
+  const terminalValue = company.totalCost * (currentPPS / company.entryPPS);
+
+  // Build cash flow array: historical + terminal
+  const flows = [
+    ...company.cashFlows.map(cf => ({ date: cf.date, amount: cf.amount })),
+  ];
+
+  // Only add terminal value if > 0
+  if (terminalValue > 0) {
+    flows.push({ date: quarterEndDate, amount: terminalValue });
+  }
+
+  // Sort by date
+  flows.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  return xirr(flows);
+}
+
+function calcWeightedMOIC(quarterIndex) {
+  let sum = 0;
+  const q = quarters[quarterIndex];
+  for (const co of companies) {
+    const pps = q.pps[co.name];
+    const moic = calcMOIC(co, pps);
+    if (moic !== null) {
+      sum += co.weight * moic;
+    }
+  }
+  return sum;
+}
+
+function calcWeightedIRR(quarterIndex) {
+  let sum = 0;
+  const q = quarters[quarterIndex];
+  for (const co of companies) {
+    const pps = q.pps[co.name];
+    const irr = calcIRR(co, pps, q.endDate);
+    if (irr !== null) {
+      sum += co.weight * irr;
+    }
+  }
+  return sum;
+}
+
+/**
+ * Fund-level TVPI = (NAV + cumulative distributions) / total drawdowns
+ * NAV is approximated as: sum of all investment fair values + other net assets
+ * Since we model fair values via PPS, and other net assets are static:
+ *   TVPI = (sum of projected FVs + other net assets + cumulative fund distributions) / total drawdowns
+ * Simplified: TVPI ≈ weighted MOIC + DPI (since weighted MOIC ≈ total FV / total cost ≈ NAV / drawdowns)
+ * More precisely: portfolio FV = sum(cost_i * moic_i), then TVPI = (portfolio FV + fund distributions) / drawdowns
+ */
+function calcTVPI(quarterIndex) {
+  const q = quarters[quarterIndex];
+  let totalFV = 0;
+  for (const co of companies) {
+    const pps = q.pps[co.name];
+    if (pps !== null && pps !== undefined && !isNaN(pps)) {
+      // FV = distributions already received + residual share value
+      const residual = co.totalCost * (pps / co.entryPPS);
+      totalFV += co.totalDistributions + residual;
+    }
+  }
+  // TVPI = (portfolio FV + fund-level distributions) / total drawdowns
+  // Note: fund distributions ($9.1M) came from Scale AI etc. and are already
+  // captured in company-level totalDistributions which flow into totalFV above.
+  // So TVPI = totalFV / totalDrawdowns (no double-counting)
+  return totalFV / TOTAL_DRAWDOWNS;
+}
+
+/**
+ * Net TVPI = (Gross portfolio value - carry - accrued fees) / total drawdowns
+ * Carry = 20% of (gross portfolio value - total investment cost)  [floored at 0]
+ * Fees = accrued mgmt fees (2% p.a. from fund start) + additional fees (3% upfront)
+ */
+function calcNetTVPI(quarterIndex) {
+  const q = quarters[quarterIndex];
+  let grossPortfolioValue = 0;
+  let totalCost = 0;
+  for (const co of companies) {
+    const pps = q.pps[co.name];
+    if (pps !== null && pps !== undefined && !isNaN(pps)) {
+      const residual = co.totalCost * (pps / co.entryPPS);
+      grossPortfolioValue += co.totalDistributions + residual;
+      totalCost += co.totalCost;
+    }
+  }
+  const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
+  const carry = grossProfit * CARRY_RATE;
+  const fees = calcAccruedFees(q.endDate);
+  const netValue = grossPortfolioValue - carry - fees;
+  return netValue / TOTAL_DRAWDOWNS;
+}
+
+/**
+ * Net IRR = XIRR on fund-level drawdown/distribution cash flows
+ * with terminal = gross NAV - carry - accrued fees (i.e. net NAV to LPs)
+ */
+function calcNetIRR(quarterIndex) {
+  const q = quarters[quarterIndex];
+  let grossPortfolioValue = 0;
+  let totalCost = 0;
+  for (const co of companies) {
+    const pps = q.pps[co.name];
+    if (pps !== null && pps !== undefined && !isNaN(pps)) {
+      const residual = co.totalCost * (pps / co.entryPPS);
+      grossPortfolioValue += co.totalDistributions + residual;
+      totalCost += co.totalCost;
+    }
+  }
+  const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
+  const carry = grossProfit * CARRY_RATE;
+  const fees = calcAccruedFees(q.endDate);
+  const netNAV = grossPortfolioValue - carry - fees;
+
+  // Build cash flow series: historical fund drawdowns + net terminal
+  const flows = fundDrawdowns.map(cf => ({ date: cf.date, amount: cf.amount }));
+  if (netNAV > 0) {
+    flows.push({ date: q.endDate, amount: netNAV });
+  }
+  flows.sort((a, b) => new Date(a.date) - new Date(b.date));
+  return xirr(flows);
+}
+
+// ============================================================
+// FORMATTING
+// ============================================================
+function fmtMOIC(val) {
+  if (val === null || val === undefined || isNaN(val)) return "—";
+  return val.toFixed(2) + "x";
+}
+
+function fmtIRR(val) {
+  if (val === null || val === undefined || isNaN(val)) return "—";
+  return (val * 100).toFixed(1) + "%";
+}
+
+function fmtPPS(val) {
+  if (val === null || val === undefined) return "";
+  if (val >= 100) return "$" + val.toFixed(0);
+  return "$" + val.toFixed(2);
+}
+
+function fmtCurrency(val) {
+  if (val >= 1000) return "$" + val.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return "$" + val.toFixed(2);
+}
+
+function fmtCostM(val) {
+  return "$" + (val / 1000000).toFixed(1) + "M";
+}
+
+function moicClass(val) {
+  if (val === null || isNaN(val)) return "moic";
+  if (val >= 1.8) return "moic positive";
+  return "moic negative";
+}
+
+function irrClass(val) {
+  if (val === null || isNaN(val)) return "irr";
+  if (val >= 0.3) return "irr positive";
+  return "irr negative";
+}
+
+// ============================================================
+// CHART RENDERING
+// ============================================================
+function drawChart(canvasId, seriesArr, fmtFn, unitSuffix) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const w = rect.width - 32; // account for panel padding
+  const h = 200;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 20, right: 16, bottom: 30, left: 50 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  // Gather all values for axis range
+  let allVals = [];
+  for (const s of seriesArr) {
+    for (const v of s.data) { if (v !== null && isFinite(v)) allVals.push(v); }
+  }
+  if (allVals.length === 0) return;
+
+  let minVal = Math.min(...allVals);
+  let maxVal = Math.max(...allVals);
+  const range = maxVal - minVal;
+  minVal -= range * 0.1 || 0.1;
+  maxVal += range * 0.1 || 0.1;
+
+  const labels = quarters.map(q => q.label);
+  const n = labels.length;
+  if (n === 0) return;
+
+  // Background
+  ctx.clearRect(0, 0, w, h);
+
+  // Grid lines
+  const gridLines = 5;
+  ctx.strokeStyle = "#2e3247";
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = "10px 'SF Mono', Consolas, monospace";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i <= gridLines; i++) {
+    const y = pad.top + plotH - (i / gridLines) * plotH;
+    const val = minVal + (i / gridLines) * (maxVal - minVal);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + plotW, y);
+    ctx.stroke();
+    ctx.fillText(fmtFn(val), pad.left - 6, y);
+  }
+
+  // X-axis labels
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+    ctx.fillText(labels[i], x, pad.top + plotH + 8);
+  }
+
+  // Draw series
+  for (const s of seriesArr) {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2;
+    if (s.dashed) ctx.setLineDash([6, 4]);
+    else ctx.setLineDash([]);
+
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      const v = s.data[i];
+      if (v === null || !isFinite(v)) continue;
+      const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+      const y = pad.top + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Dots
+    ctx.setLineDash([]);
+    for (let i = 0; i < n; i++) {
+      const v = s.data[i];
+      if (v === null || !isFinite(v)) continue;
+      const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+      const y = pad.top + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Value labels
+      ctx.fillStyle = "#e4e4e7";
+      ctx.font = "9px 'SF Mono', Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(fmtFn(v), x, y - 6);
+    }
+  }
+}
+
+function renderCharts() {
+  const grossTvpiData = [];
+  const netTvpiData = [];
+  const grossIrrData = [];
+  const netIrrData = [];
+
+  for (let qi = 0; qi < quarters.length; qi++) {
+    grossTvpiData.push(calcTVPI(qi));
+    netTvpiData.push(calcNetTVPI(qi));
+    const gIrr = calcWeightedIRR(qi);
+    grossIrrData.push(gIrr);
+    netIrrData.push(calcNetIRR(qi));
+  }
+
+  drawChart("chart-tvpi", [
+    { data: grossTvpiData, color: "#6366f1", dashed: false },
+    { data: netTvpiData, color: "#6366f1", dashed: true },
+  ], v => v.toFixed(2) + "x", "x");
+
+  drawChart("chart-irr", [
+    { data: grossIrrData, color: "#22c55e", dashed: false },
+    { data: netIrrData, color: "#22c55e", dashed: true },
+  ], v => (v * 100).toFixed(1) + "%", "%");
+}
+
+// ============================================================
+// TABLE RENDERING
+// ============================================================
+function render() {
+  const table = document.getElementById("portfolio-table");
+
+  // Build header rows
+  let headerRow1 = `<tr><th rowspan="2" style="min-width:130px;">Company</th>
+    <th rowspan="2">Cost Base</th>
+    <th rowspan="2">Weight</th>
+    <th rowspan="2">Entry PPS</th>
+    <th rowspan="2">Dist. / Cost</th>`;
+
+  let headerRow2 = `<tr class="sub-header">`;
+
+  for (let qi = 0; qi < quarters.length; qi++) {
+    const q = quarters[qi];
+    headerRow1 += `<th colspan="4" class="quarter-header quarter-group">
+      ${q.label}
+      ${quarters.length > 1 ? `<button class="remove-btn" onclick="removeQuarter(${qi})" title="Remove quarter">&times;</button>` : ""}
+    </th>`;
+    headerRow2 += `<th class="quarter-group">PPS $</th><th>MOIC</th><th>TVPI</th><th>IRR</th>`;
+  }
+
+  headerRow1 += `</tr>`;
+  headerRow2 += `</tr>`;
+
+  // Build body rows
+  let bodyRows = "";
+  for (const co of companies) {
+    const hasDist = co.totalDistributions > 0;
+    bodyRows += `<tr>
+      <td class="company-name">${co.name}</td>
+      <td class="entry-col">${fmtCostM(co.totalCost)}</td>
+      <td class="weight-col">${(co.weight * 100).toFixed(2)}%</td>
+      <td class="entry-col">${fmtPPS(co.entryPPS)}</td>
+      <td class="entry-col">${hasDist ? (co.totalDistributions / co.totalCost).toFixed(2) + "x" : "—"}</td>`;
+
+    for (let qi = 0; qi < quarters.length; qi++) {
+      const q = quarters[qi];
+      const pps = q.pps[co.name] ?? "";
+      const moic = calcMOIC(co, pps);
+      const irr = calcIRR(co, pps, q.endDate);
+
+      const stepVal = (pps !== "" && pps < 30) ? "0.5" : "1";
+      bodyRows += `<td class="quarter-group">
+        <input class="pps-input" type="number" step="${stepVal}" min="0"
+          value="${pps}"
+          data-company="${co.name}" data-quarter="${qi}"
+          onchange="updatePPS(this)"
+          oninput="updatePPS(this)">
+      </td>`;
+      bodyRows += `<td class="${moicClass(moic)}">${fmtMOIC(moic)}</td>`;
+      bodyRows += `<td></td>`;
+      bodyRows += `<td class="${irrClass(irr)}">${fmtIRR(irr)}</td>`;
+    }
+    bodyRows += `</tr>`;
+  }
+
+  // Total / Weighted row
+  const totalCostSum = companies.reduce((s, c) => s + c.totalCost, 0);
+  let totalRow = `<tr class="total-row">
+    <td><strong>Total / Gross</strong></td>
+    <td class="entry-col"><strong>${fmtCostM(totalCostSum)}</strong></td>
+    <td class="weight-col">100%</td>
+    <td></td>
+    <td></td>`;
+
+  for (let qi = 0; qi < quarters.length; qi++) {
+    const wMoic = calcWeightedMOIC(qi);
+    const tvpi = calcTVPI(qi);
+    const wIrr = calcWeightedIRR(qi);
+    totalRow += `<td class="quarter-group"></td>`;
+    totalRow += `<td class="${moicClass(wMoic)}"><strong>${fmtMOIC(wMoic)}</strong></td>`;
+    totalRow += `<td class="${moicClass(tvpi)}"><strong>${fmtMOIC(tvpi)}</strong></td>`;
+    totalRow += `<td class="${irrClass(wIrr)}"><strong>${fmtIRR(wIrr)}</strong></td>`;
+  }
+  totalRow += `</tr>`;
+
+  // Net TVPI / IRR row
+  let netRow = `<tr class="total-row">
+    <td><strong>Net</strong></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>`;
+
+  for (let qi = 0; qi < quarters.length; qi++) {
+    const netTvpi = calcNetTVPI(qi);
+    const netIrr = calcNetIRR(qi);
+    netRow += `<td class="quarter-group"></td>`;
+    netRow += `<td></td>`;
+    netRow += `<td class="${moicClass(netTvpi)}"><strong>${fmtMOIC(netTvpi)}</strong></td>`;
+    netRow += `<td class="${irrClass(netIrr)}"><strong>${fmtIRR(netIrr)}</strong></td>`;
+  }
+  netRow += `</tr>`;
+
+  table.innerHTML = `<thead>${headerRow1}${headerRow2}</thead><tbody>${bodyRows}${totalRow}${netRow}</tbody>`;
+  renderCharts();
+}
+
+// ============================================================
+// EVENT HANDLERS
+// ============================================================
+function updatePPS(input) {
+  const company = input.dataset.company;
+  const qi = parseInt(input.dataset.quarter);
+  const val = parseFloat(input.value);
+  quarters[qi].pps[company] = isNaN(val) ? null : val;
+
+  // Adjust step: 0.5 increments below 30, 1 above
+  input.step = (!isNaN(val) && val < 30) ? "0.5" : "1";
+
+  // Re-render only the computed cells, not the whole table (to preserve focus)
+  updateComputedCells();
+  scheduleHashSync();
+}
+
+function updateComputedCells() {
+  const table = document.getElementById("portfolio-table");
+  const tbody = table.querySelector("tbody");
+  const rows = tbody.querySelectorAll("tr");
+
+  for (let ri = 0; ri < companies.length; ri++) {
+    const co = companies[ri];
+    const row = rows[ri];
+    const cells = row.querySelectorAll("td");
+
+    // Fixed cols: name(0), cost(1), weight(2), entry(3), dist(4)
+    // Then per quarter: pps(5+qi*4), moic(6+qi*4), tvpi(7+qi*4), irr(8+qi*4)
+    for (let qi = 0; qi < quarters.length; qi++) {
+      const q = quarters[qi];
+      const pps = q.pps[co.name];
+      const moic = calcMOIC(co, pps);
+      const irr = calcIRR(co, pps, q.endDate);
+
+      const moicCell = cells[6 + qi * 4];
+      const irrCell = cells[8 + qi * 4];
+
+      if (moicCell) {
+        moicCell.className = moicClass(moic);
+        moicCell.textContent = fmtMOIC(moic);
+      }
+      if (irrCell) {
+        irrCell.className = irrClass(irr);
+        irrCell.textContent = fmtIRR(irr);
+      }
+    }
+  }
+
+  // Update total row
+  const totalRow = rows[companies.length];
+  if (totalRow) {
+    const cells = totalRow.querySelectorAll("td");
+    for (let qi = 0; qi < quarters.length; qi++) {
+      const wMoic = calcWeightedMOIC(qi);
+      const tvpi = calcTVPI(qi);
+      const wIrr = calcWeightedIRR(qi);
+      const moicCell = cells[6 + qi * 4];
+      const tvpiCell = cells[7 + qi * 4];
+      const irrCell = cells[8 + qi * 4];
+
+      if (moicCell) {
+        moicCell.className = moicClass(wMoic);
+        moicCell.innerHTML = `<strong>${fmtMOIC(wMoic)}</strong>`;
+      }
+      if (tvpiCell) {
+        tvpiCell.className = moicClass(tvpi);
+        tvpiCell.innerHTML = `<strong>${fmtMOIC(tvpi)}</strong>`;
+      }
+      if (irrCell) {
+        irrCell.className = irrClass(wIrr);
+        irrCell.innerHTML = `<strong>${fmtIRR(wIrr)}</strong>`;
+      }
+    }
+  }
+
+  // Update net row
+  const netRow = rows[companies.length + 1];
+  if (netRow) {
+    const cells = netRow.querySelectorAll("td");
+    for (let qi = 0; qi < quarters.length; qi++) {
+      const netTvpi = calcNetTVPI(qi);
+      const netIrr = calcNetIRR(qi);
+      const tvpiCell = cells[7 + qi * 4];
+      const irrCell = cells[8 + qi * 4];
+
+      if (tvpiCell) {
+        tvpiCell.className = moicClass(netTvpi);
+        tvpiCell.innerHTML = `<strong>${fmtMOIC(netTvpi)}</strong>`;
+      }
+      if (irrCell) {
+        irrCell.className = irrClass(netIrr);
+        irrCell.innerHTML = `<strong>${fmtIRR(netIrr)}</strong>`;
+      }
+    }
+  }
+
+  renderCharts();
+}
+
+function addQuarter() {
+  const lastQ = quarters[quarters.length - 1];
+  const lastDate = new Date(lastQ.endDate);
+
+  // Next quarter end
+  let month = lastDate.getMonth() + 3;
+  let year = lastDate.getFullYear();
+  if (month > 11) { month -= 12; year++; }
+
+  // End of that month
+  const nextDate = new Date(year, month + 1, 0);
+  const dateStr = nextDate.toISOString().split("T")[0];
+
+  // Quarter label
+  const qNum = Math.floor(month / 3) + 1;
+  const yearShort = String(year).slice(2);
+  const label = `Q${qNum} ${yearShort}'`;
+
+  // Copy PPS from last quarter
+  const pps = { ...lastQ.pps };
+
+  quarters.push({ label, endDate: dateStr, pps });
+  render();
+  scheduleHashSync();
+}
+
+function removeQuarter(qi) {
+  if (quarters.length <= 1) return;
+  quarters.splice(qi, 1);
+  render();
+  scheduleHashSync();
+}
+
+function resetDefaults() {
+  quarters = JSON.parse(JSON.stringify(defaultQuarters));
+  render();
+  syncHashToUrl();
+}
+
+// ============================================================
+// URL STATE SHARING
+// ============================================================
+
+/**
+ * Encode current quarters state into a compact URL hash.
+ * Format: base64-encoded JSON of [{label, endDate, pps: {company: value}}]
+ * Only encodes PPS values that differ from defaults (to keep URLs shorter).
+ */
+function encodeStateToHash() {
+  // Build compact state: array of quarter objects with only non-null PPS
+  const state = quarters.map(q => {
+    const pps = {};
+    for (const [name, val] of Object.entries(q.pps)) {
+      if (val !== null && val !== undefined && !isNaN(val)) {
+        pps[name] = val;
+      }
+    }
+    return { l: q.label, d: q.endDate, p: pps };
+  });
+  try {
+    const json = JSON.stringify(state);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return encoded;
+  } catch (e) {
+    return "";
+  }
+}
+
+function decodeStateFromHash(hash) {
+  try {
+    const json = decodeURIComponent(escape(atob(hash)));
+    const state = JSON.parse(json);
+    if (!Array.isArray(state) || state.length === 0) return null;
+
+    return state.map(q => ({
+      label: q.l,
+      endDate: q.d,
+      pps: q.p || {}
+    }));
+  } catch (e) {
+    return null;
+  }
+}
+
+function syncHashToUrl() {
+  const hash = encodeStateToHash();
+  if (hash) {
+    history.replaceState(null, "", "#" + hash);
+  }
+}
+
+function loadFromHash() {
+  const hash = window.location.hash.slice(1); // remove leading #
+  if (!hash) return false;
+
+  const decoded = decodeStateFromHash(hash);
+  if (!decoded) return false;
+
+  quarters = decoded;
+  return true;
+}
+
+function copyShareLink() {
+  syncHashToUrl();
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    const toast = document.getElementById("share-toast");
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2200);
+  }).catch(() => {
+    // Fallback: select a prompt
+    prompt("Copy this link to share:", url);
+  });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+// Load from URL hash if present, otherwise use defaults
+loadFromHash();
+render();
+
+// Update URL hash on any state change (debounced)
+let hashTimer = null;
+function scheduleHashSync() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(syncHashToUrl, 300);
+}
+</script>
+</body>
+</html>
