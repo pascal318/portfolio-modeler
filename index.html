@@ -229,6 +229,115 @@
     line-height: 1.6;
   }
   .info-panel strong { color: var(--text); }
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+    border-bottom: 2px solid var(--border);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    letter-spacing: 0.3px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .audit-table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    font-size: 11px;
+  }
+  .audit-table th, .audit-table td {
+    padding: 6px 10px;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .audit-table th {
+    background: var(--surface2);
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+  .audit-table td:first-child, .audit-table th:first-child { text-align: left; }
+  .audit-table tr:nth-child(even) td { background: var(--surface); }
+  .audit-table tr:nth-child(odd) td { background: var(--surface2); }
+  .audit-table tr.audit-total td { background: #1e2235 !important; font-weight: 700; border-top: 2px solid var(--accent); }
+  .audit-flow-table { margin-bottom: 16px; }
+  .audit-flow-table td.flow-date { text-align: left; color: var(--text-muted); font-size: 10px; }
+  .audit-flow-table td.flow-neg { color: var(--red); }
+  .audit-flow-table td.flow-pos { color: var(--green); }
+  tr.recycling-header td {
+    background: #1a1e30 !important;
+    font-weight: 700;
+    border-top: 1px solid var(--border);
+    color: var(--accent);
+  }
+  tr.recycling-header td:first-child { background: #1a1e30 !important; }
+  tr.recycling-child td:first-child .company-name {
+    padding-left: 16px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .cf-company-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 14px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cf-company-header .cf-badge {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .cf-company-header .cf-badge.recycling { color: var(--accent); border-color: var(--accent); }
+  .cf-section { margin-bottom: 20px; }
+  .cf-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 4px;
+  }
+  .cf-stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .cf-stat .cf-label { color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+  .cf-stat .cf-value { font-weight: 700; font-size: 13px; }
+  .cf-stat .cf-value.neg { color: var(--red); }
+  .cf-stat .cf-value.pos { color: var(--green); }
+  .cf-check { font-size: 10px; margin-top: 3px; }
+  .cf-check.pass { color: var(--green); }
+  .cf-check.fail { color: var(--red); }
+  .running-cost { color: var(--text-muted); font-size: 10px; }
 </style>
 </head>
 <body>
@@ -248,6 +357,12 @@
 </div>
 <div id="share-toast" class="share-toast">Link copied to clipboard!</div>
 
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('modeler')">Portfolio Modeler</button>
+  <button class="tab-btn" onclick="switchTab('cashflows')">Cash Flows</button>
+</div>
+
+<div id="tab-modeler" class="tab-content active">
 <div class="charts-wrapper">
   <div class="chart-panel">
     <div class="chart-title">TVPI Over Time</div>
@@ -274,11 +389,17 @@
 
 <div class="info-panel">
   <strong>Gross MOIC:</strong> (Total Distributions + Residual Shares Value) / Total Cost Basis<br>
-  <strong>Gross TVPI:</strong> Total Portfolio Fair Value / Total Drawdowns ($82.9M)<br>
+  <strong>Gross TVPI:</strong> (Residual Portfolio FV + Fund Distributions) / Total Drawdowns ($82.9M)<br>
   <strong>Gross IRR:</strong> XIRR across all historical cash flows + projected terminal value at quarter-end date<br>
   <strong>Net TVPI:</strong> (Gross Value - 20% Carry - Accrued Fees) / Drawdowns | Mgmt fee = 2% p.a. on $88.5M from Q1 24 + 3% additional ($2.7M upfront)<br>
   <strong>Net IRR:</strong> XIRR on fund-level drawdowns/distributions with terminal = Net NAV (gross value less carry and accrued fees)
 </div>
+</div><!-- end tab-modeler -->
+
+<div id="tab-cashflows" class="tab-content">
+  <div id="cashflows-content" style="margin-top:16px;"></div>
+</div>
+
 
 <script>
 // ============================================================
@@ -292,7 +413,9 @@ const companies = [
     totalCost: 7466450,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-01-17", amount: -7466450 },
+      { date: "2024-02-08", amount: -87750 },
+      { date: "2024-03-05", amount: -7290500 },
+      { date: "2024-03-31", amount: -88200 },
     ]
   },
   {
@@ -302,46 +425,47 @@ const companies = [
     totalCost: 500007,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-06-28", amount: -500007 },
+      { date: "2024-03-08", amount: -400007 },
+      { date: "2024-05-24", amount: -100000 },
     ]
   },
   {
     name: "Databricks",
     weight: 0.1527,
     entryPPS: 68.46,
-    totalCost: 12219913,
+    totalCost: 12219913.04,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-05-10", amount: -12119913 },
-      { date: "2024-10-04", amount: -100000 },
+      { date: "2024-04-10", amount: -219999.04 },
+      { date: "2024-04-10", amount: -10999952 },
+      { date: "2025-03-06", amount: -999962 },
     ]
   },
   {
     name: "Netskope",
     weight: 0.0992,
     entryPPS: 10.29,
-    totalCost: 7695139,
+    totalCost: 7798737.57,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2023-03-31", amount: -305412 },
-      { date: "2023-06-30", amount: -305412 },
-      { date: "2023-07-07", amount: -261060 },
-      { date: "2023-07-20", amount: -40800 },
-      { date: "2023-09-29", amount: -305412 },
-      { date: "2023-10-20", amount: -139644 },
-      { date: "2023-12-29", amount: -305412 },
-      { date: "2024-01-26", amount: -40800 },
-      { date: "2024-03-28", amount: -305412 },
-      { date: "2024-06-28", amount: -305412 },
-      { date: "2024-07-08", amount: -326520 },
-      { date: "2024-09-30", amount: -305412 },
-      { date: "2024-10-11", amount: -2693400 },
-      { date: "2024-12-31", amount: -305412 },
-      { date: "2025-03-31", amount: -305412 },
-      { date: "2025-06-30", amount: -305412 },
-      { date: "2025-07-18", amount: -632280 },
-      { date: "2025-09-30", amount: -305412 },
-      { date: "2025-09-30", amount: -103600 },
+      { date: "2024-01-26", amount: -1386007.5 },
+      { date: "2024-02-02", amount: -692680 },
+      { date: "2024-02-16", amount: -17830 },
+      { date: "2024-02-21", amount: -532500 },
+      { date: "2024-02-22", amount: -882972.09 },
+      { date: "2024-03-07", amount: -122071.88 },
+      { date: "2024-03-12", amount: -25000 },
+      { date: "2024-03-21", amount: -323750 },
+      { date: "2024-03-31", amount: -731180 },
+      { date: "2024-04-12", amount: -103600 },
+      { date: "2024-04-23", amount: -400000 },
+      { date: "2024-05-03", amount: -48041.75 },
+      { date: "2024-05-15", amount: -1000000 },
+      { date: "2024-06-03", amount: -508615.1 },
+      { date: "2024-06-13", amount: -323889 },
+      { date: "2024-06-21", amount: -306447.75 },
+      { date: "2024-07-10", amount: -346902.5 },
+      { date: "2024-07-11", amount: -47250 },
     ]
   },
   {
@@ -351,34 +475,35 @@ const companies = [
     totalCost: 10000000,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-06-28", amount: -10000000 },
+      { date: "2024-02-13", amount: -5000000 },
+      { date: "2024-07-23", amount: -5000000 },
     ]
   },
   {
     name: "Cribl",
     weight: 0.0293,
     entryPPS: 3.19,
-    totalCost: 2255802,
-    totalDistributions: 600587,
+    totalCost: 2255801.77,
+    totalDistributions: 600587.04,
     cashFlows: [
-      { date: "2024-05-09", amount: -84329 },
-      { date: "2024-05-16", amount: -63247 },
-      { date: "2024-05-02", amount: -2108226 },
-      { date: "2025-11-28", amount: 600587 },
+      { date: "2024-05-02", amount: -2108225.95 },
+      { date: "2024-05-09", amount: -84329.04 },
+      { date: "2024-05-16", amount: -63246.78 },
+      { date: "2025-11-28", amount: 600587.04 },
     ]
   },
   {
     name: "Scale AI",
     weight: 0.1107,
     entryPPS: 9.48,
-    totalCost: 8727584,
-    totalDistributions: 16323276,
+    totalCost: 8727583.50,
+    totalDistributions: 16323276.27,
     cashFlows: [
       { date: "2024-06-30", amount: -6030000 },
-      { date: "2025-02-19", amount: -2697584 },
+      { date: "2025-02-19", amount: -2697583.5 },
       { date: "2025-06-20", amount: 100100 },
       { date: "2025-07-15", amount: 11201795 },
-      { date: "2025-07-17", amount: 4221381 },
+      { date: "2025-07-17", amount: 4221381.27 },
       { date: "2025-09-08", amount: 800000 },
     ]
   },
@@ -386,12 +511,13 @@ const companies = [
     name: "Gusto",
     weight: 0.0954,
     entryPPS: 15.83,
-    totalCost: 7535007,
-    totalDistributions: 309902,
+    totalCost: 7535006.50,
+    totalDistributions: 309901.50,
     cashFlows: [
-      { date: "2024-01-17", amount: -4535007 },
-      { date: "2024-06-28", amount: -3000000 },
-      { date: "2025-04-10", amount: 309902 },
+      { date: "2024-09-27", amount: -774984.5 },
+      { date: "2024-10-02", amount: -6749987 },
+      { date: "2025-09-30", amount: -10035 },
+      { date: "2025-10-16", amount: 309901.5 },
     ]
   },
   {
@@ -401,8 +527,9 @@ const companies = [
     totalCost: 10480000,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-01-17", amount: -7480000 },
-      { date: "2024-06-28", amount: -3000000 },
+      { date: "2024-12-18", amount: -5000000 },
+      { date: "2024-12-24", amount: -480000 },
+      { date: "2025-07-23", amount: -5000000 },
     ]
   },
   {
@@ -412,8 +539,45 @@ const companies = [
     totalCost: 12011250,
     totalDistributions: 0,
     cashFlows: [
-      { date: "2024-01-17", amount: -7511250 },
-      { date: "2024-06-28", amount: -4500000 },
+      { date: "2025-03-31", amount: -7706250 },
+      { date: "2025-06-04", amount: -2055000 },
+      { date: "2025-08-28", amount: -2250000 },
+    ]
+  },
+  {
+    name: "Grafana (Recycling)",
+    parentName: "Grafana",
+    weight: 0,
+    entryPPS: 10.00,
+    totalCost: 2790000,
+    totalDistributions: 0,
+    isRecycling: true,
+    cashFlows: [
+      { date: "2026-01-15", amount: -2790000 },
+    ]
+  },
+  {
+    name: "Stripe (Recycling)",
+    parentName: "Stripe",
+    weight: 0,
+    entryPPS: 59.00,
+    totalCost: 1260000,
+    totalDistributions: 0,
+    isRecycling: true,
+    cashFlows: [
+      { date: "2026-01-15", amount: -1260000 },
+    ]
+  },
+  {
+    name: "Databricks (Recycling)",
+    parentName: "Databricks",
+    weight: 0,
+    entryPPS: 165.00,
+    totalCost: 1050000,
+    totalDistributions: 0,
+    isRecycling: true,
+    cashFlows: [
+      { date: "2026-01-15", amount: -1050000 },
     ]
   }
 ];
@@ -433,7 +597,10 @@ const defaultQuarters = [
       "Scale AI": 5.00,
       "Gusto": 25.50,
       "Grafana": 11.60,
-      "Stripe": 52.00
+      "Stripe": 52.00,
+      "Grafana (Recycling)": null,
+      "Stripe (Recycling)": null,
+      "Databricks (Recycling)": null
     }
   },
   {
@@ -449,7 +616,10 @@ const defaultQuarters = [
       "Scale AI": 5.00,
       "Gusto": 25.50,
       "Grafana": 15.00,
-      "Stripe": 57.00
+      "Stripe": 57.00,
+      "Grafana (Recycling)": 15.00,
+      "Stripe (Recycling)": 57.00,
+      "Databricks (Recycling)": 190.00
     }
   },
   {
@@ -465,7 +635,10 @@ const defaultQuarters = [
       "Scale AI": 5.00,
       "Gusto": 25.50,
       "Grafana": 15.00,
-      "Stripe": 65.00
+      "Stripe": 65.00,
+      "Grafana (Recycling)": 15.00,
+      "Stripe (Recycling)": 65.00,
+      "Databricks (Recycling)": 190.00
     }
   },
   {
@@ -481,7 +654,10 @@ const defaultQuarters = [
       "Scale AI": 5.00,
       "Gusto": 25.50,
       "Grafana": 15.00,
-      "Stripe": 72.00
+      "Stripe": 72.00,
+      "Grafana (Recycling)": 15.00,
+      "Stripe (Recycling)": 72.00,
+      "Databricks (Recycling)": 240.00
     }
   },
   {
@@ -497,7 +673,10 @@ const defaultQuarters = [
       "Scale AI": 5.00,
       "Gusto": 25.50,
       "Grafana": 15.00,
-      "Stripe": 78.00
+      "Stripe": 78.00,
+      "Grafana (Recycling)": 15.00,
+      "Stripe (Recycling)": 78.00,
+      "Databricks (Recycling)": 240.00
     }
   }
 ];
@@ -702,20 +881,17 @@ function calcWeightedIRR(quarterIndex) {
  */
 function calcTVPI(quarterIndex) {
   const q = quarters[quarterIndex];
-  let totalFV = 0;
+  let totalResidualFV = 0;
   for (const co of companies) {
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
-      // FV = distributions already received + residual share value
-      const residual = co.totalCost * (pps / co.entryPPS);
-      totalFV += co.totalDistributions + residual;
+      // Residual share value only (no distributions — those are already captured
+      // in fund-level distributions which flowed back to LPs)
+      totalResidualFV += co.totalCost * (pps / co.entryPPS);
     }
   }
-  // TVPI = (portfolio FV + fund-level distributions) / total drawdowns
-  // Note: fund distributions ($9.1M) came from Scale AI etc. and are already
-  // captured in company-level totalDistributions which flow into totalFV above.
-  // So TVPI = totalFV / totalDrawdowns (no double-counting)
-  return totalFV / TOTAL_DRAWDOWNS;
+  // TVPI = (residual portfolio value + cumulative fund distributions) / total drawdowns
+  return (totalResidualFV + TOTAL_FUND_DISTRIBUTIONS) / TOTAL_DRAWDOWNS;
 }
 
 /**
@@ -725,16 +901,17 @@ function calcTVPI(quarterIndex) {
  */
 function calcNetTVPI(quarterIndex) {
   const q = quarters[quarterIndex];
-  let grossPortfolioValue = 0;
+  let totalResidualFV = 0;
   let totalCost = 0;
   for (const co of companies) {
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
-      const residual = co.totalCost * (pps / co.entryPPS);
-      grossPortfolioValue += co.totalDistributions + residual;
+      totalResidualFV += co.totalCost * (pps / co.entryPPS);
       totalCost += co.totalCost;
     }
   }
+  // Gross portfolio value = residual FV + fund distributions already returned
+  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
   const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
   const carry = grossProfit * CARRY_RATE;
   const fees = calcAccruedFees(q.endDate);
@@ -748,16 +925,16 @@ function calcNetTVPI(quarterIndex) {
  */
 function calcNetIRR(quarterIndex) {
   const q = quarters[quarterIndex];
-  let grossPortfolioValue = 0;
+  let totalResidualFV = 0;
   let totalCost = 0;
   for (const co of companies) {
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
-      const residual = co.totalCost * (pps / co.entryPPS);
-      grossPortfolioValue += co.totalDistributions + residual;
+      totalResidualFV += co.totalCost * (pps / co.entryPPS);
       totalCost += co.totalCost;
     }
   }
+  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
   const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
   const carry = grossProfit * CARRY_RATE;
   const fees = calcAccruedFees(q.endDate);
@@ -972,9 +1149,13 @@ function render() {
   headerRow1 += `</tr>`;
   headerRow2 += `</tr>`;
 
-  // Build body rows
+  // Split companies into core and recycling
+  const coreCompanies = companies.filter(c => !c.isRecycling);
+  const recyclingCompanies = companies.filter(c => c.isRecycling);
+
+  // Build body rows for core companies
   let bodyRows = "";
-  for (const co of companies) {
+  for (const co of coreCompanies) {
     const hasDist = co.totalDistributions > 0;
     bodyRows += `<tr>
       <td class="company-name">${co.name}</td>
@@ -1004,8 +1185,64 @@ function render() {
     bodyRows += `</tr>`;
   }
 
+  // Recycling header row (purely illustrative - aggregated summary)
+  if (recyclingCompanies.length > 0) {
+    const recyclingCostSum = recyclingCompanies.reduce((s, c) => s + c.totalCost, 0);
+    bodyRows += `<tr class="recycling-header">
+      <td>Recycling</td>
+      <td class="entry-col">${fmtCostM(recyclingCostSum)}</td>
+      <td class="weight-col">—</td>
+      <td></td>
+      <td></td>`;
+    for (let qi = 0; qi < quarters.length; qi++) {
+      // Compute aggregate recycling MOIC for display
+      let totalRecyclingCost = 0;
+      let totalRecyclingFV = 0;
+      const q = quarters[qi];
+      for (const co of recyclingCompanies) {
+        const pps = q.pps[co.name];
+        if (pps !== null && pps !== undefined && !isNaN(pps)) {
+          const residual = co.totalCost * (pps / co.entryPPS);
+          totalRecyclingFV += co.totalDistributions + residual;
+          totalRecyclingCost += co.totalCost;
+        }
+      }
+      const aggMoic = totalRecyclingCost > 0 ? totalRecyclingFV / totalRecyclingCost : null;
+      bodyRows += `<td class="quarter-group"></td>`;
+      bodyRows += `<td class="${moicClass(aggMoic)}">${fmtMOIC(aggMoic)}</td>`;
+      bodyRows += `<td></td>`;
+      bodyRows += `<td></td>`;
+    }
+    bodyRows += `</tr>`;
+
+    // Individual recycling company rows (indented, read-only PPS from parent)
+    for (const co of recyclingCompanies) {
+      const hasDist = co.totalDistributions > 0;
+      bodyRows += `<tr class="recycling-child">
+        <td><span class="company-name">${co.name}</span></td>
+        <td class="entry-col">${fmtCostM(co.totalCost)}</td>
+        <td class="weight-col">—</td>
+        <td class="entry-col">${fmtPPS(co.entryPPS)}</td>
+        <td class="entry-col">${hasDist ? (co.totalDistributions / co.totalCost).toFixed(2) + "x" : "—"}</td>`;
+
+      for (let qi = 0; qi < quarters.length; qi++) {
+        const q = quarters[qi];
+        const pps = q.pps[co.name];
+        const isPreInvestment = pps === null || pps === undefined;
+        const moic = isPreInvestment ? null : calcMOIC(co, pps);
+        const irr = isPreInvestment ? null : calcIRR(co, pps, q.endDate);
+
+        bodyRows += `<td class="quarter-group entry-col" data-recycling-pps="${co.name}" data-quarter="${qi}">${isPreInvestment ? "" : fmtPPS(pps)}</td>`;
+        bodyRows += `<td class="${moicClass(moic)}">${fmtMOIC(moic)}</td>`;
+        bodyRows += `<td></td>`;
+        bodyRows += `<td class="${irrClass(irr)}">${fmtIRR(irr)}</td>`;
+      }
+      bodyRows += `</tr>`;
+    }
+  }
+
   // Total / Weighted row
-  const totalCostSum = companies.reduce((s, c) => s + c.totalCost, 0);
+  const totalCostSum = coreCompanies.reduce((s, c) => s + c.totalCost, 0);
   let totalRow = `<tr class="total-row">
     <td><strong>Total / Gross</strong></td>
     <td class="entry-col"><strong>${fmtCostM(totalCostSum)}</strong></td>
@@ -1058,6 +1295,15 @@ function updatePPS(input) {
   // Adjust step: 0.5 increments below 30, 1 above
   input.step = (!isNaN(val) && val < 30) ? "0.5" : "1";
 
+  // Sync to recycling counterparts: if this is a parent company, update its recycling children
+  const recyclingChildren = companies.filter(c => c.isRecycling && c.parentName === company);
+  for (const child of recyclingChildren) {
+    // Only sync for quarters where the recycling investment exists (non-null PPS)
+    if (quarters[qi].pps[child.name] !== null && quarters[qi].pps[child.name] !== undefined) {
+      quarters[qi].pps[child.name] = isNaN(val) ? null : val;
+    }
+  }
+
   // Re-render only the computed cells, not the whole table (to preserve focus)
   updateComputedCells();
   scheduleHashSync();
@@ -1068,13 +1314,15 @@ function updateComputedCells() {
   const tbody = table.querySelector("tbody");
   const rows = tbody.querySelectorAll("tr");
 
-  for (let ri = 0; ri < companies.length; ri++) {
-    const co = companies[ri];
+  const coreCompanies = companies.filter(c => !c.isRecycling);
+  const recyclingCompanies = companies.filter(c => c.isRecycling);
+
+  // Update core company rows
+  for (let ri = 0; ri < coreCompanies.length; ri++) {
+    const co = coreCompanies[ri];
     const row = rows[ri];
     const cells = row.querySelectorAll("td");
 
-    // Fixed cols: name(0), cost(1), weight(2), entry(3), dist(4)
-    // Then per quarter: pps(5+qi*4), moic(6+qi*4), tvpi(7+qi*4), irr(8+qi*4)
     for (let qi = 0; qi < quarters.length; qi++) {
       const q = quarters[qi];
       const pps = q.pps[co.name];
@@ -1095,8 +1343,71 @@ function updateComputedCells() {
     }
   }
 
+  // Row index offset: after core companies
+  let rowOffset = coreCompanies.length;
+
+  // Update recycling header row (aggregate MOIC)
+  if (recyclingCompanies.length > 0) {
+    const recyclingHeaderRow = rows[rowOffset];
+    if (recyclingHeaderRow) {
+      const cells = recyclingHeaderRow.querySelectorAll("td");
+      for (let qi = 0; qi < quarters.length; qi++) {
+        const q = quarters[qi];
+        let totalRecyclingCost = 0;
+        let totalRecyclingFV = 0;
+        for (const co of recyclingCompanies) {
+          const pps = q.pps[co.name];
+          if (pps !== null && pps !== undefined && !isNaN(pps)) {
+            const residual = co.totalCost * (pps / co.entryPPS);
+            totalRecyclingFV += co.totalDistributions + residual;
+            totalRecyclingCost += co.totalCost;
+          }
+        }
+        const aggMoic = totalRecyclingCost > 0 ? totalRecyclingFV / totalRecyclingCost : null;
+        const moicCell = cells[6 + qi * 4];
+        if (moicCell) {
+          moicCell.className = moicClass(aggMoic);
+          moicCell.textContent = fmtMOIC(aggMoic);
+        }
+      }
+    }
+    rowOffset++;
+
+    // Update individual recycling company rows (PPS display + metrics)
+    for (let ri = 0; ri < recyclingCompanies.length; ri++) {
+      const co = recyclingCompanies[ri];
+      const row = rows[rowOffset + ri];
+      const cells = row.querySelectorAll("td");
+
+      for (let qi = 0; qi < quarters.length; qi++) {
+        const q = quarters[qi];
+        const pps = q.pps[co.name];
+        const isPreInvestment = pps === null || pps === undefined;
+        const moic = isPreInvestment ? null : calcMOIC(co, pps);
+        const irr = isPreInvestment ? null : calcIRR(co, pps, q.endDate);
+
+        const ppsCell = cells[5 + qi * 4];
+        const moicCell = cells[6 + qi * 4];
+        const irrCell = cells[8 + qi * 4];
+
+        if (ppsCell) {
+          ppsCell.textContent = isPreInvestment ? "" : fmtPPS(pps);
+        }
+        if (moicCell) {
+          moicCell.className = moicClass(moic);
+          moicCell.textContent = fmtMOIC(moic);
+        }
+        if (irrCell) {
+          irrCell.className = irrClass(irr);
+          irrCell.textContent = fmtIRR(irr);
+        }
+      }
+    }
+    rowOffset += recyclingCompanies.length;
+  }
+
   // Update total row
-  const totalRow = rows[companies.length];
+  const totalRow = rows[rowOffset];
   if (totalRow) {
     const cells = totalRow.querySelectorAll("td");
     for (let qi = 0; qi < quarters.length; qi++) {
@@ -1123,7 +1434,7 @@ function updateComputedCells() {
   }
 
   // Update net row
-  const netRow = rows[companies.length + 1];
+  const netRow = rows[rowOffset + 1];
   if (netRow) {
     const cells = netRow.querySelectorAll("td");
     for (let qi = 0; qi < quarters.length; qi++) {
@@ -1262,11 +1573,158 @@ function copyShareLink() {
 }
 
 // ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  // Find the button that matches
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if ((tabId === 'modeler' && btn.textContent.includes('Modeler')) ||
+        (tabId === 'cashflows' && btn.textContent.includes('Cash Flows'))) {
+      btn.classList.add('active');
+    }
+  });
+  if (tabId === 'cashflows') renderCashFlows();
+}
+
+// ============================================================
+// CASH FLOWS TAB
+// ============================================================
+function renderCashFlows() {
+  const container = document.getElementById('cashflows-content');
+  const coreCompanies = companies.filter(c => !c.isRecycling);
+  const recyclingCompanies = companies.filter(c => c.isRecycling);
+  const allCompanies = [...coreCompanies, ...recyclingCompanies];
+
+  let html = '';
+
+  // Portfolio summary header
+  let portfolioTotalCost = 0, portfolioTotalDist = 0, portfolioFlowCount = 0;
+  for (const co of allCompanies) {
+    portfolioTotalCost += co.totalCost;
+    portfolioTotalDist += co.totalDistributions;
+    portfolioFlowCount += co.cashFlows.length;
+  }
+  html += `<div class="cf-summary" style="margin-bottom:20px;">
+    <div class="cf-stat"><div class="cf-label">Total Portfolio Cost</div><div class="cf-value neg">$${(portfolioTotalCost/1e6).toFixed(2)}M</div></div>
+    <div class="cf-stat"><div class="cf-label">Total Distributions</div><div class="cf-value pos">$${(portfolioTotalDist/1e6).toFixed(2)}M</div></div>
+    <div class="cf-stat"><div class="cf-label">Companies</div><div class="cf-value">${allCompanies.length}</div></div>
+    <div class="cf-stat"><div class="cf-label">Total Cash Flows</div><div class="cf-value">${portfolioFlowCount}</div></div>
+  </div>`;
+
+  for (const co of allCompanies) {
+    const isRec = co.isRecycling;
+    const sortedFlows = [...co.cashFlows].sort((a, b) => a.date.localeCompare(b.date));
+
+    // Compute flow-level totals
+    let sumCost = 0, sumDist = 0;
+    for (const cf of sortedFlows) {
+      if (cf.amount < 0) sumCost += Math.abs(cf.amount);
+      else sumDist += cf.amount;
+    }
+
+    // Cross-foot validation
+    const costMatch = Math.abs(sumCost - co.totalCost) < 1;
+    const distMatch = Math.abs(sumDist - co.totalDistributions) < 1;
+
+    html += `<div class="cf-section">`;
+    html += `<div class="cf-company-header">${co.name}`;
+    if (isRec) html += ` <span class="cf-badge recycling">Recycling</span>`;
+    html += ` <span class="cf-badge">${sortedFlows.length} flows</span>`;
+    html += `</div>`;
+
+    // Summary cards
+    html += `<div class="cf-summary">
+      <div class="cf-stat">
+        <div class="cf-label">Total Cost Basis</div>
+        <div class="cf-value neg">$${sumCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+        <div class="cf-check ${costMatch ? 'pass' : 'fail'}">${costMatch ? '&#10003;' : '&#10007;'} ${costMatch ? 'Matches totalCost' : 'MISMATCH vs totalCost ($' + co.totalCost.toLocaleString() + ')'}</div>
+      </div>
+      <div class="cf-stat">
+        <div class="cf-label">Total Distributions</div>
+        <div class="cf-value ${sumDist > 0 ? 'pos' : ''}">${sumDist > 0 ? '$' + sumDist.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : 'None'}</div>
+        <div class="cf-check ${distMatch ? 'pass' : 'fail'}">${distMatch ? '&#10003;' : '&#10007;'} ${distMatch ? 'Matches totalDistributions' : 'MISMATCH vs totalDistributions ($' + co.totalDistributions.toLocaleString() + ')'}</div>
+      </div>
+      <div class="cf-stat">
+        <div class="cf-label">Entry PPS</div>
+        <div class="cf-value">${fmtPPS(co.entryPPS)}</div>
+      </div>
+      <div class="cf-stat">
+        <div class="cf-label">Net Invested (Cost - Dist.)</div>
+        <div class="cf-value">$${((sumCost - sumDist)/1e6).toFixed(2)}M</div>
+      </div>
+    </div>`;
+
+    // Flow table
+    html += `<div class="table-wrapper" style="margin-top:6px;">
+      <table class="audit-table">
+        <thead><tr>
+          <th style="width:30px;">#</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Type</th>
+          <th>Impacts Cost</th>
+          <th>Running Cost Basis</th>
+        </tr></thead><tbody>`;
+
+    let runningCost = 0;
+    for (let i = 0; i < sortedFlows.length; i++) {
+      const cf = sortedFlows[i];
+      const isNeg = cf.amount < 0;
+      const impactsCost = isNeg; // negative flows are cost (investment)
+      if (impactsCost) runningCost += Math.abs(cf.amount);
+
+      html += `<tr>
+        <td style="color:var(--text-muted);">${i + 1}</td>
+        <td class="flow-date">${cf.date}</td>
+        <td class="${isNeg ? 'flow-neg' : 'flow-pos'}">${isNeg ? '-' : '+'}$${Math.abs(cf.amount).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td style="color:var(--text-muted);">${isNeg ? 'Investment' : 'Distribution'}</td>
+        <td style="text-align:center;">${impactsCost ? '<span style="color:var(--red);">C</span>' : ''}</td>
+        <td class="running-cost">${impactsCost ? '$' + runningCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : ''}</td>
+      </tr>`;
+    }
+
+    // Footer totals
+    html += `<tr class="audit-total">
+      <td></td>
+      <td><strong>Totals</strong></td>
+      <td><strong class="flow-neg">-$${sumCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong>
+          ${sumDist > 0 ? ' / <strong class="flow-pos">+$' + sumDist.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) + '</strong>' : ''}</td>
+      <td></td>
+      <td></td>
+      <td><strong>$${runningCost.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</strong></td>
+    </tr>`;
+
+    html += `</tbody></table></div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+// ============================================================
 // INIT
 // ============================================================
 
+// Ensure recycling PPS tracks parent PPS for all active quarters
+function syncRecyclingPPS() {
+  const recycling = companies.filter(c => c.isRecycling);
+  for (const q of quarters) {
+    for (const co of recycling) {
+      // Skip pre-investment quarters (null stays null)
+      if (q.pps[co.name] === null || q.pps[co.name] === undefined) continue;
+      const parentPPS = q.pps[co.parentName];
+      if (parentPPS !== null && parentPPS !== undefined && !isNaN(parentPPS)) {
+        q.pps[co.name] = parentPPS;
+      }
+    }
+  }
+}
+
 // Load from URL hash if present, otherwise use defaults
 loadFromHash();
+syncRecyclingPPS();
 render();
 
 // Update URL hash on any state change (debounced)
