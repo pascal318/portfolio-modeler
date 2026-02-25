@@ -832,14 +832,14 @@ function xirr(cashFlows) {
       if (rate <= -1) rate = -0.99;
       if (rate > 100) rate = 100;
 
-      if (Math.abs(f) < 1e-8) {
+      if (Math.abs(f) < 1e-6) {
         converged = true;
         break;
       }
     }
 
     const residual = Math.abs(npv(rate));
-    if (converged && residual < bestResidual && rate > -1 && isFinite(rate)) {
+    if ((converged || residual < 1e-4) && residual < bestResidual && rate > -1 && isFinite(rate)) {
       bestRate = rate;
       bestResidual = residual;
     }
