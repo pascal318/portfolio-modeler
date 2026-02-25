@@ -292,6 +292,38 @@
     font-weight: 500;
     color: var(--text-muted);
   }
+  .recycling-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 12px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    user-select: none;
+  }
+  .recycling-toggle .toggle-track {
+    width: 32px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--border);
+    position: relative;
+    transition: background 0.2s;
+  }
+  .recycling-toggle.on .toggle-track { background: var(--accent); }
+  .recycling-toggle .toggle-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s;
+  }
+  .recycling-toggle.on .toggle-thumb { left: 18px; }
+  tr.recycling-child.hidden { display: none; }
   .cf-company-header {
     font-size: 13px;
     font-weight: 700;
@@ -724,6 +756,7 @@ const fundDrawdowns = [
 // STATE
 // ============================================================
 let quarters = JSON.parse(JSON.stringify(defaultQuarters));
+let recyclingEnabled = true;
 
 // ============================================================
 // FINANCIAL CALCULATIONS
@@ -883,6 +916,7 @@ function calcTVPI(quarterIndex) {
   const q = quarters[quarterIndex];
   let totalResidualFV = 0;
   for (const co of companies) {
+    if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
       // Residual share value only (no distributions — those are already captured
@@ -904,6 +938,7 @@ function calcNetTVPI(quarterIndex) {
   let totalResidualFV = 0;
   let totalCost = 0;
   for (const co of companies) {
+    if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
       totalResidualFV += co.totalCost * (pps / co.entryPPS);
@@ -928,6 +963,7 @@ function calcNetIRR(quarterIndex) {
   let totalResidualFV = 0;
   let totalCost = 0;
   for (const co of companies) {
+    if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
     if (pps !== null && pps !== undefined && !isNaN(pps)) {
       totalResidualFV += co.totalCost * (pps / co.entryPPS);
@@ -1189,36 +1225,40 @@ function render() {
   if (recyclingCompanies.length > 0) {
     const recyclingCostSum = recyclingCompanies.reduce((s, c) => s + c.totalCost, 0);
     bodyRows += `<tr class="recycling-header">
-      <td>Recycling</td>
+      <td>Recycling <label class="recycling-toggle ${recyclingEnabled ? 'on' : ''}" onclick="toggleRecycling(event)"><span class="toggle-track"><span class="toggle-thumb"></span></span>${recyclingEnabled ? 'On' : 'Off'}</label></td>
       <td class="entry-col">${fmtCostM(recyclingCostSum)}</td>
       <td class="weight-col">—</td>
       <td></td>
       <td></td>`;
     for (let qi = 0; qi < quarters.length; qi++) {
-      // Compute aggregate recycling MOIC for display
-      let totalRecyclingCost = 0;
-      let totalRecyclingFV = 0;
-      const q = quarters[qi];
-      for (const co of recyclingCompanies) {
-        const pps = q.pps[co.name];
-        if (pps !== null && pps !== undefined && !isNaN(pps)) {
-          const residual = co.totalCost * (pps / co.entryPPS);
-          totalRecyclingFV += co.totalDistributions + residual;
-          totalRecyclingCost += co.totalCost;
+      if (!recyclingEnabled) {
+        bodyRows += `<td class="quarter-group"></td><td>—</td><td></td><td></td>`;
+      } else {
+        // Compute aggregate recycling MOIC for display
+        let totalRecyclingCost = 0;
+        let totalRecyclingFV = 0;
+        const q = quarters[qi];
+        for (const co of recyclingCompanies) {
+          const pps = q.pps[co.name];
+          if (pps !== null && pps !== undefined && !isNaN(pps)) {
+            const residual = co.totalCost * (pps / co.entryPPS);
+            totalRecyclingFV += co.totalDistributions + residual;
+            totalRecyclingCost += co.totalCost;
+          }
         }
+        const aggMoic = totalRecyclingCost > 0 ? totalRecyclingFV / totalRecyclingCost : null;
+        bodyRows += `<td class="quarter-group"></td>`;
+        bodyRows += `<td class="${moicClass(aggMoic)}">${fmtMOIC(aggMoic)}</td>`;
+        bodyRows += `<td></td>`;
+        bodyRows += `<td></td>`;
       }
-      const aggMoic = totalRecyclingCost > 0 ? totalRecyclingFV / totalRecyclingCost : null;
-      bodyRows += `<td class="quarter-group"></td>`;
-      bodyRows += `<td class="${moicClass(aggMoic)}">${fmtMOIC(aggMoic)}</td>`;
-      bodyRows += `<td></td>`;
-      bodyRows += `<td></td>`;
     }
     bodyRows += `</tr>`;
 
     // Individual recycling company rows (indented, read-only PPS from parent)
     for (const co of recyclingCompanies) {
       const hasDist = co.totalDistributions > 0;
-      bodyRows += `<tr class="recycling-child">
+      bodyRows += `<tr class="recycling-child${recyclingEnabled ? '' : ' hidden'}">
         <td><span class="company-name">${co.name}</span></td>
         <td class="entry-col">${fmtCostM(co.totalCost)}</td>
         <td class="weight-col">—</td>
@@ -1307,6 +1347,13 @@ function updatePPS(input) {
   // Re-render only the computed cells, not the whole table (to preserve focus)
   updateComputedCells();
   scheduleHashSync();
+}
+
+function toggleRecycling(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  recyclingEnabled = !recyclingEnabled;
+  render();
 }
 
 function updateComputedCells() {
@@ -1595,7 +1642,7 @@ function switchTab(tabId) {
 function renderCashFlows() {
   const container = document.getElementById('cashflows-content');
   const coreCompanies = companies.filter(c => !c.isRecycling);
-  const recyclingCompanies = companies.filter(c => c.isRecycling);
+  const recyclingCompanies = recyclingEnabled ? companies.filter(c => c.isRecycling) : [];
   const allCompanies = [...coreCompanies, ...recyclingCompanies];
 
   let html = '';
