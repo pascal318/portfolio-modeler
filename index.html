@@ -895,21 +895,20 @@ function calcWeightedMOIC(quarterIndex) {
 
 function calcWeightedIRR(quarterIndex) {
   const q = quarters[quarterIndex];
-  // Build combined cash flows from all active companies
-  let flows = [];
+  // Gross IRR: XIRR on fund-level drawdowns + gross terminal (residual FV + fund distributions)
+  let totalResidualFV = 0;
   for (const co of companies) {
     if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
-    if (pps === null || pps === undefined || isNaN(pps)) continue;
-    // Add historical cash flows
-    for (const cf of co.cashFlows) {
-      flows.push({ date: cf.date, amount: cf.amount });
+    if (pps !== null && pps !== undefined && !isNaN(pps)) {
+      totalResidualFV += co.totalCost * (pps / co.entryPPS);
     }
-    // Add terminal value
-    const tv = co.totalCost * (pps / co.entryPPS);
-    if (tv > 0) flows.push({ date: q.endDate, amount: tv });
   }
-  if (flows.length === 0) return null;
+  const grossNAV = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
+  const flows = fundDrawdowns.map(cf => ({ date: cf.date, amount: cf.amount }));
+  if (grossNAV > 0) {
+    flows.push({ date: q.endDate, amount: grossNAV });
+  }
   flows.sort((a, b) => new Date(a.date) - new Date(b.date));
   return xirr(flows);
 }
