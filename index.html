@@ -718,6 +718,7 @@ const TOTAL_COMMITMENTS = 88486100;
 const TOTAL_DRAWDOWNS = 82868676;
 const TOTAL_FUND_DISTRIBUTIONS = 9100000; // DPI = 9,100,000 / 82,868,676 = 0.1098x
 const DPI = TOTAL_FUND_DISTRIBUTIONS / TOTAL_DRAWDOWNS; // ~0.11x
+const FUND_CASH = 4850585; // Cash held by fund per SOFP at 31 Dec 2025
 const FUND_START = new Date("2024-01-01"); // Fund started investing Q1 24
 const MGMT_FEE_RATE = 0.02;       // 2% p.a. on commitments
 const CARRY_RATE = 0.20;           // 20% carry on profits
@@ -904,7 +905,7 @@ function calcWeightedIRR(quarterIndex) {
       totalResidualFV += co.totalCost * (pps / co.entryPPS);
     }
   }
-  const grossNAV = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
+  const grossNAV = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS + FUND_CASH;
   const flows = fundDrawdowns.map(cf => ({ date: cf.date, amount: cf.amount }));
   if (grossNAV > 0) {
     flows.push({ date: q.endDate, amount: grossNAV });
@@ -934,7 +935,7 @@ function calcTVPI(quarterIndex) {
     }
   }
   // TVPI = (residual portfolio value + cumulative fund distributions) / total drawdowns
-  return (totalResidualFV + TOTAL_FUND_DISTRIBUTIONS) / TOTAL_DRAWDOWNS;
+  return (totalResidualFV + TOTAL_FUND_DISTRIBUTIONS + FUND_CASH) / TOTAL_DRAWDOWNS;
 }
 
 /**
@@ -955,7 +956,7 @@ function calcNetTVPI(quarterIndex) {
     }
   }
   // Gross portfolio value = residual FV + fund distributions already returned
-  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
+  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS + FUND_CASH;
   const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
   const carry = grossProfit * CARRY_RATE;
   const fees = calcAccruedFees(q.endDate);
@@ -979,7 +980,7 @@ function calcNetIRR(quarterIndex) {
       totalCost += co.totalCost;
     }
   }
-  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS;
+  const grossPortfolioValue = totalResidualFV + TOTAL_FUND_DISTRIBUTIONS + FUND_CASH;
   const grossProfit = Math.max(0, grossPortfolioValue - totalCost);
   const carry = grossProfit * CARRY_RATE;
   const fees = calcAccruedFees(q.endDate);
