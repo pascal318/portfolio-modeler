@@ -370,6 +370,179 @@
   .cf-check.pass { color: var(--green); }
   .cf-check.fail { color: var(--red); }
   .running-cost { color: var(--text-muted); font-size: 10px; }
+
+  /* Scenario toolbar */
+  .scenario-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .scenario-toolbar label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .scenario-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    width: 140px;
+    outline: none;
+  }
+  .scenario-input:focus { border-color: var(--accent); }
+  .scenario-input::placeholder { color: var(--text-muted); opacity: 0.6; }
+  .scenario-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 10px;
+    min-width: 150px;
+    outline: none;
+    cursor: pointer;
+  }
+  .scenario-select:focus { border-color: var(--accent); }
+  .scenario-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .scenario-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(60px);
+    background: var(--accent);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .scenario-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Overview tab */
+  .overview-section {
+    margin-bottom: 28px;
+  }
+  .overview-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .overview-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .overview-empty p { margin-bottom: 8px; }
+  .overview-empty .hint { font-size: 11px; opacity: 0.7; }
+  .overview-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .overview-table th, .overview-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .overview-table th {
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .overview-table th:first-child, .overview-table td:first-child {
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: inherit;
+    z-index: 1;
+  }
+  .overview-table tr:last-child td { border-bottom: none; }
+  .divergence-high {
+    background: rgba(234, 179, 8, 0.15) !important;
+    color: var(--yellow);
+    font-weight: 700;
+  }
+  .overview-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .overview-summary strong { color: var(--accent); }
+  .overview-summary .bull { color: var(--green); }
+  .overview-summary .bear { color: var(--red); }
+  .overview-charts-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .overview-chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .overview-chart-panel .chart-title {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .overview-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .overview-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .overview-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
 </style>
 </head>
 <body>
@@ -389,9 +562,22 @@
 </div>
 <div id="share-toast" class="share-toast">Link copied to clipboard!</div>
 
+<div class="scenario-toolbar">
+  <label>Scenario:</label>
+  <input class="scenario-input" id="scenario-name" type="text" placeholder="e.g. Pascal" maxlength="30">
+  <button class="action-btn" onclick="onSaveScenario()">Save</button>
+  <div class="scenario-divider"></div>
+  <select class="scenario-select" id="scenario-select" onchange="onLoadScenario()">
+    <option value="">-- Load scenario --</option>
+  </select>
+  <button class="action-btn secondary" onclick="onDeleteScenario()">Delete</button>
+</div>
+<div id="scenario-toast" class="scenario-toast"></div>
+
 <div class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('modeler')">Portfolio Modeler</button>
   <button class="tab-btn" onclick="switchTab('cashflows')">Cash Flows</button>
+  <button class="tab-btn" onclick="switchTab('overview')">Team Overview</button>
 </div>
 
 <div id="tab-modeler" class="tab-content active">
@@ -430,6 +616,10 @@
 
 <div id="tab-cashflows" class="tab-content">
   <div id="cashflows-content" style="margin-top:16px;"></div>
+</div>
+
+<div id="tab-overview" class="tab-content">
+  <div id="overview-content" style="margin-top:16px;"></div>
 </div>
 
 
@@ -623,10 +813,10 @@ const defaultQuarters = [
       "Arctic Wolf": 8.50,
       "Chainalysis": 9.50,
       "Databricks": 190.00,
-      "Netskope": 17.50,
+      "Netskope": 20.73,
       "Canva": 1875.00,
       "Cribl": 4.90,
-      "Scale AI": 5.00,
+      "Scale AI": 10.43,
       "Gusto": 25.50,
       "Grafana": 11.60,
       "Stripe": 52.00,
@@ -1619,13 +1809,19 @@ function loadFromHash() {
 
 function copyShareLink() {
   syncHashToUrl();
-  const url = window.location.href;
+  // Include scenario name in URL if one is entered
+  const scenarioName = (document.getElementById('scenario-name')?.value || '').trim();
+  let url = window.location.href;
+  if (scenarioName) {
+    const u = new URL(url);
+    u.searchParams.set('scenario', scenarioName);
+    url = u.toString();
+  }
   navigator.clipboard.writeText(url).then(() => {
     const toast = document.getElementById("share-toast");
     toast.classList.add("show");
     setTimeout(() => toast.classList.remove("show"), 2200);
   }).catch(() => {
-    // Fallback: select a prompt
     prompt("Copy this link to share:", url);
   });
 }
@@ -1640,11 +1836,13 @@ function switchTab(tabId) {
   // Find the button that matches
   document.querySelectorAll('.tab-btn').forEach(btn => {
     if ((tabId === 'modeler' && btn.textContent.includes('Modeler')) ||
-        (tabId === 'cashflows' && btn.textContent.includes('Cash Flows'))) {
+        (tabId === 'cashflows' && btn.textContent.includes('Cash Flows')) ||
+        (tabId === 'overview' && btn.textContent.includes('Team Overview'))) {
       btn.classList.add('active');
     }
   });
   if (tabId === 'cashflows') renderCashFlows();
+  if (tabId === 'overview') renderOverview();
 }
 
 // ============================================================
@@ -1762,6 +1960,445 @@ function renderCashFlows() {
 }
 
 // ============================================================
+// SCENARIO MANAGEMENT
+// ============================================================
+
+const SCENARIO_COLORS = ['#6366f1', '#f59e0b', '#ef4444', '#22c55e', '#ec4899', '#14b8a6'];
+
+function loadScenarios() {
+  try {
+    const raw = localStorage.getItem('portfolio-scenarios');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+
+function saveScenarios(arr) {
+  localStorage.setItem('portfolio-scenarios', JSON.stringify(arr));
+}
+
+function saveCurrentAsScenario(name) {
+  const scenarios = loadScenarios();
+  const snapshot = JSON.parse(JSON.stringify(quarters));
+  const idx = scenarios.findIndex(s => s.name === name);
+  const entry = { name, savedAt: Date.now(), quarters: snapshot };
+  if (idx >= 0) scenarios[idx] = entry;
+  else scenarios.push(entry);
+  saveScenarios(scenarios);
+  refreshScenarioDropdown();
+}
+
+function deleteScenario(name) {
+  const scenarios = loadScenarios().filter(s => s.name !== name);
+  saveScenarios(scenarios);
+  refreshScenarioDropdown();
+}
+
+function loadScenarioByName(name) {
+  const scenarios = loadScenarios();
+  const found = scenarios.find(s => s.name === name);
+  if (!found) return false;
+  quarters = JSON.parse(JSON.stringify(found.quarters));
+  syncRecyclingPPS();
+  render();
+  scheduleHashSync();
+  return true;
+}
+
+function refreshScenarioDropdown() {
+  const sel = document.getElementById('scenario-select');
+  if (!sel) return;
+  const scenarios = loadScenarios();
+  sel.innerHTML = '<option value="">-- Load scenario --</option>';
+  for (const s of scenarios) {
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  }
+}
+
+function showScenarioToast(msg) {
+  const toast = document.getElementById('scenario-toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function onSaveScenario() {
+  const input = document.getElementById('scenario-name');
+  const name = (input.value || '').trim();
+  if (!name) { input.focus(); return; }
+  saveCurrentAsScenario(name);
+  showScenarioToast(`Saved scenario "${name}"`);
+  const sel = document.getElementById('scenario-select');
+  if (sel) sel.value = name;
+}
+
+function onLoadScenario() {
+  const sel = document.getElementById('scenario-select');
+  const name = sel ? sel.value : '';
+  if (!name) return;
+  loadScenarioByName(name);
+  const input = document.getElementById('scenario-name');
+  if (input) input.value = name;
+  showScenarioToast(`Loaded scenario "${name}"`);
+}
+
+function onDeleteScenario() {
+  const sel = document.getElementById('scenario-select');
+  const name = sel ? sel.value : '';
+  if (!name) return;
+  deleteScenario(name);
+  sel.value = '';
+  showScenarioToast(`Deleted scenario "${name}"`);
+}
+
+// ============================================================
+// COMPUTE METRICS FOR ARBITRARY SCENARIO
+// ============================================================
+
+function computeMetricsForScenario(scenarioQuarters) {
+  const saved = quarters;
+  quarters = scenarioQuarters;
+  const metrics = [];
+  for (let qi = 0; qi < quarters.length; qi++) {
+    metrics.push({
+      label: quarters[qi].label,
+      endDate: quarters[qi].endDate,
+      grossTVPI: calcTVPI(qi),
+      netTVPI: calcNetTVPI(qi),
+      grossIRR: calcWeightedIRR(qi),
+      netIRR: calcNetIRR(qi),
+      grossMOIC: calcWeightedMOIC(qi)
+    });
+  }
+  quarters = saved;
+  return metrics;
+}
+
+// ============================================================
+// OVERVIEW CHART (multi-scenario)
+// ============================================================
+
+function drawOverviewChart(canvasId, scenarioSeries, fmtFn, labels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const w = rect.width - 32;
+  const h = 200;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 20, right: 16, bottom: 30, left: 50 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+
+  let allVals = [];
+  for (const s of scenarioSeries) {
+    for (const v of s.data) { if (v !== null && isFinite(v)) allVals.push(v); }
+  }
+  if (allVals.length === 0) return;
+
+  let minVal = Math.min(...allVals);
+  let maxVal = Math.max(...allVals);
+  const range = maxVal - minVal;
+  minVal -= range * 0.1 || 0.1;
+  maxVal += range * 0.1 || 0.1;
+
+  const n = labels.length;
+  if (n === 0) return;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const gridLines = 5;
+  ctx.strokeStyle = "#2e3247";
+  ctx.lineWidth = 0.5;
+  ctx.fillStyle = "#9ca3af";
+  ctx.font = "10px 'SF Mono', Consolas, monospace";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i <= gridLines; i++) {
+    const y = pad.top + plotH - (i / gridLines) * plotH;
+    const val = minVal + (i / gridLines) * (maxVal - minVal);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + plotW, y);
+    ctx.stroke();
+    ctx.fillText(fmtFn(val), pad.left - 6, y);
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  for (let i = 0; i < n; i++) {
+    const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+    ctx.fillText(labels[i], x, pad.top + plotH + 8);
+  }
+
+  for (const s of scenarioSeries) {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = 2;
+    if (s.dashed) ctx.setLineDash([6, 4]);
+    else ctx.setLineDash([]);
+
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      const v = s.data[i];
+      if (v === null || !isFinite(v)) continue;
+      const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+      const y = pad.top + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    for (let i = 0; i < n; i++) {
+      const v = s.data[i];
+      if (v === null || !isFinite(v)) continue;
+      const x = n === 1 ? pad.left + plotW / 2 : pad.left + (i / (n - 1)) * plotW;
+      const y = pad.top + plotH - ((v - minVal) / (maxVal - minVal)) * plotH;
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e4e4e7";
+      ctx.font = "9px 'SF Mono', Consolas, monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(fmtFn(v), x, y - 6);
+    }
+  }
+}
+
+// ============================================================
+// RENDER OVERVIEW TAB
+// ============================================================
+
+function renderOverview() {
+  const container = document.getElementById('overview-content');
+  if (!container) return;
+
+  const scenarios = loadScenarios();
+  if (scenarios.length < 2) {
+    container.innerHTML = `
+      <div class="overview-empty">
+        <p>Save at least 2 scenarios to see the Team Overview.</p>
+        <p class="hint">Enter a name in the scenario bar above and click "Save" to snapshot your current PPS assumptions.<br>
+        Have each team member fill in their own expectations, save under their name, then come here to compare.</p>
+      </div>`;
+    return;
+  }
+
+  const scenarioData = scenarios.map(s => ({
+    name: s.name,
+    quarters: s.quarters,
+    metrics: computeMetricsForScenario(s.quarters)
+  }));
+
+  const maxQLen = Math.max(...scenarioData.map(s => s.metrics.length));
+  const labels = scenarioData.find(s => s.metrics.length === maxQLen).metrics.map(m => m.label);
+
+  let html = '';
+
+  // --- Charts ---
+  html += `<div class="overview-section">`;
+  html += `<div class="overview-section-title">Performance Trajectories</div>`;
+  html += `<div class="overview-charts-wrapper">`;
+  html += `<div class="overview-chart-panel"><div class="chart-title">Gross TVPI by Scenario</div><canvas id="overview-chart-tvpi" class="chart-canvas" height="200"></canvas>`;
+  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}</div>`).join('')}</div></div>`;
+  html += `<div class="overview-chart-panel"><div class="chart-title">Gross IRR by Scenario</div><canvas id="overview-chart-irr" class="chart-canvas" height="200"></canvas>`;
+  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}</div>`).join('')}</div></div>`;
+  html += `</div></div>`;
+
+  // --- Gross Metrics Table ---
+  html += `<div class="overview-section">`;
+  html += `<div class="overview-section-title">Gross Metrics Comparison</div>`;
+  html += `<div class="table-wrapper"><table class="overview-table"><thead><tr><th>Quarter</th>`;
+  for (const s of scenarioData) {
+    html += `<th colspan="2" style="text-align:center;border-left:2px solid var(--border)">${s.name}</th>`;
+  }
+  html += `</tr><tr><th></th>`;
+  for (const s of scenarioData) {
+    html += `<th style="border-left:2px solid var(--border)">TVPI</th><th>IRR</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+  for (let qi = 0; qi < maxQLen; qi++) {
+    html += `<tr><td><strong>${labels[qi]}</strong></td>`;
+    for (const s of scenarioData) {
+      const m = s.metrics[qi];
+      if (m) {
+        html += `<td style="border-left:2px solid var(--border)">${m.grossTVPI ? m.grossTVPI.toFixed(2) + 'x' : '-'}</td>`;
+        html += `<td>${m.grossIRR !== null ? (m.grossIRR * 100).toFixed(1) + '%' : '-'}</td>`;
+      } else {
+        html += `<td style="border-left:2px solid var(--border)">-</td><td>-</td>`;
+      }
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  // --- Net Metrics Table ---
+  html += `<div class="overview-section">`;
+  html += `<div class="overview-section-title">Net Metrics Comparison</div>`;
+  html += `<div class="table-wrapper"><table class="overview-table"><thead><tr><th>Quarter</th>`;
+  for (const s of scenarioData) {
+    html += `<th colspan="2" style="text-align:center;border-left:2px solid var(--border)">${s.name}</th>`;
+  }
+  html += `</tr><tr><th></th>`;
+  for (const s of scenarioData) {
+    html += `<th style="border-left:2px solid var(--border)">Net TVPI</th><th>Net IRR</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+  for (let qi = 0; qi < maxQLen; qi++) {
+    html += `<tr><td><strong>${labels[qi]}</strong></td>`;
+    for (const s of scenarioData) {
+      const m = s.metrics[qi];
+      if (m) {
+        html += `<td style="border-left:2px solid var(--border)">${m.netTVPI ? m.netTVPI.toFixed(2) + 'x' : '-'}</td>`;
+        html += `<td>${m.netIRR !== null ? (m.netIRR * 100).toFixed(1) + '%' : '-'}</td>`;
+      } else {
+        html += `<td style="border-left:2px solid var(--border)">-</td><td>-</td>`;
+      }
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  // --- PPS Divergence Table ---
+  const coreCompanies = companies.filter(c => !c.isRecycling);
+  html += `<div class="overview-section">`;
+  html += `<div class="overview-section-title">PPS Assumptions & Divergence</div>`;
+  html += `<div class="table-wrapper" style="overflow-x:auto"><table class="overview-table"><thead><tr><th>Company</th><th>Quarter</th>`;
+  for (const s of scenarioData) {
+    html += `<th>${s.name}</th>`;
+  }
+  html += `<th>Spread</th></tr></thead><tbody>`;
+
+  for (const co of coreCompanies) {
+    for (let qi = 0; qi < maxQLen; qi++) {
+      const values = scenarioData.map(s => {
+        const q = s.quarters[qi];
+        return q ? (q.pps[co.name] ?? null) : null;
+      }).filter(v => v !== null && !isNaN(v));
+      if (values.length < 2) continue;
+
+      const minV = Math.min(...values);
+      const maxV = Math.max(...values);
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const spread = mean > 0 ? ((maxV - minV) / mean * 100) : 0;
+      const isHigh = spread > 20;
+
+      html += `<tr><td>${co.name}</td><td>${labels[qi]}</td>`;
+      for (const s of scenarioData) {
+        const q = s.quarters[qi];
+        const pps = q ? (q.pps[co.name] ?? null) : null;
+        const isMax = pps === maxV && isHigh;
+        const isMin = pps === minV && isHigh;
+        const style = isMax ? ' style="color:var(--green)"' : (isMin ? ' style="color:var(--red)"' : '');
+        html += `<td${style}>${pps !== null ? '$' + pps.toFixed(2) : '-'}</td>`;
+      }
+      html += `<td${isHigh ? ' class="divergence-high"' : ''}>${spread.toFixed(0)}%</td>`;
+      html += `</tr>`;
+    }
+  }
+  html += `</tbody></table></div></div>`;
+
+  // --- Key Differences Summary ---
+  const lastQMetrics = scenarioData.map(s => ({
+    name: s.name,
+    tvpi: s.metrics[s.metrics.length - 1]?.grossTVPI,
+    irr: s.metrics[s.metrics.length - 1]?.grossIRR
+  })).filter(s => s.tvpi != null);
+
+  if (lastQMetrics.length >= 2) {
+    const sorted = [...lastQMetrics].sort((a, b) => (b.tvpi || 0) - (a.tvpi || 0));
+    const bull = sorted[0];
+    const bear = sorted[sorted.length - 1];
+
+    let biggestSpread = { company: '', quarter: '', spread: 0, min: 0, max: 0 };
+    for (const co of coreCompanies) {
+      for (let qi = 0; qi < maxQLen; qi++) {
+        const values = scenarioData.map(s => {
+          const q = s.quarters[qi];
+          return q ? (q.pps[co.name] ?? null) : null;
+        }).filter(v => v !== null && !isNaN(v));
+        if (values.length < 2) continue;
+        const minV = Math.min(...values);
+        const maxV = Math.max(...values);
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const spread = mean > 0 ? (maxV - minV) / mean * 100 : 0;
+        if (spread > biggestSpread.spread) {
+          biggestSpread = { company: co.name, quarter: labels[qi], spread, min: minV, max: maxV };
+        }
+      }
+    }
+
+    const perScenario = scenarioData.map((s) => {
+      let maxDev = { co: '', dev: -Infinity };
+      let minDev = { co: '', dev: Infinity };
+      for (const co of coreCompanies) {
+        const lastQ = s.quarters[s.quarters.length - 1];
+        if (!lastQ) continue;
+        const pps = lastQ.pps[co.name];
+        if (pps === null || pps === undefined || isNaN(pps)) continue;
+        const allPPS = scenarioData.map(sc => {
+          const q = sc.quarters[sc.quarters.length - 1];
+          return q ? (q.pps[co.name] ?? null) : null;
+        }).filter(v => v !== null && !isNaN(v));
+        if (allPPS.length < 2) continue;
+        const avg = allPPS.reduce((a, b) => a + b, 0) / allPPS.length;
+        const dev = avg > 0 ? ((pps - avg) / avg * 100) : 0;
+        if (dev > maxDev.dev) maxDev = { co: co.name, dev };
+        if (dev < minDev.dev) minDev = { co: co.name, dev };
+      }
+      return { name: s.name, bullish: maxDev, bearish: minDev };
+    });
+
+    html += `<div class="overview-section">`;
+    html += `<div class="overview-section-title">Key Differences</div>`;
+    html += `<div class="overview-summary">`;
+    html += `<span class="bull">Most bullish:</span> <strong>${bull.name}</strong> (terminal Gross TVPI: ${bull.tvpi.toFixed(2)}x${bull.irr != null ? ', IRR: ' + (bull.irr * 100).toFixed(1) + '%' : ''})<br>`;
+    html += `<span class="bear">Most conservative:</span> <strong>${bear.name}</strong> (terminal Gross TVPI: ${bear.tvpi.toFixed(2)}x${bear.irr != null ? ', IRR: ' + (bear.irr * 100).toFixed(1) + '%' : ''})<br>`;
+    if (biggestSpread.spread > 0) {
+      html += `<strong>Biggest disagreement:</strong> ${biggestSpread.company} in ${biggestSpread.quarter} — PPS range $${biggestSpread.min.toFixed(2)} to $${biggestSpread.max.toFixed(2)} (${biggestSpread.spread.toFixed(0)}% spread)<br>`;
+    }
+    html += `<br>`;
+    for (const ps of perScenario) {
+      html += `<strong>${ps.name}</strong> is most bullish on <span class="bull">${ps.bullish.co}</span> (+${ps.bullish.dev.toFixed(0)}% above avg)`;
+      if (ps.bearish.co) html += ` and most bearish on <span class="bear">${ps.bearish.co}</span> (${ps.bearish.dev.toFixed(0)}% below avg)`;
+      html += `<br>`;
+    }
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+
+  // Render charts after DOM is ready
+  setTimeout(() => {
+    const tvpiSeries = scenarioData.map((s, i) => ({
+      data: s.metrics.map(m => m.grossTVPI),
+      color: SCENARIO_COLORS[i % SCENARIO_COLORS.length],
+      dashed: false
+    }));
+    drawOverviewChart('overview-chart-tvpi', tvpiSeries, v => v.toFixed(2) + 'x', labels);
+
+    const irrSeries = scenarioData.map((s, i) => ({
+      data: s.metrics.map(m => m.grossIRR),
+      color: SCENARIO_COLORS[i % SCENARIO_COLORS.length],
+      dashed: false
+    }));
+    drawOverviewChart('overview-chart-irr', irrSeries, v => (v * 100).toFixed(1) + '%', labels);
+  }, 50);
+}
+
+// ============================================================
 // INIT
 // ============================================================
 
@@ -1770,7 +2407,6 @@ function syncRecyclingPPS() {
   const recycling = companies.filter(c => c.isRecycling);
   for (const q of quarters) {
     for (const co of recycling) {
-      // Skip pre-investment quarters (null stays null)
       if (q.pps[co.name] === null || q.pps[co.name] === undefined) continue;
       const parentPPS = q.pps[co.parentName];
       if (parentPPS !== null && parentPPS !== undefined && !isNaN(parentPPS)) {
@@ -1780,10 +2416,26 @@ function syncRecyclingPPS() {
   }
 }
 
+// Handle scenario import from URL: ?scenario=NAME
+function handleScenarioImport() {
+  const params = new URLSearchParams(window.location.search);
+  const scenarioName = params.get('scenario');
+  if (scenarioName && window.location.hash) {
+    saveCurrentAsScenario(scenarioName);
+    showScenarioToast(`Imported scenario "${scenarioName}"`);
+    // Clean URL
+    const url = new URL(window.location);
+    url.searchParams.delete('scenario');
+    history.replaceState(null, '', url.pathname + url.hash);
+  }
+}
+
 // Load from URL hash if present, otherwise use defaults
 loadFromHash();
 syncRecyclingPPS();
 render();
+refreshScenarioDropdown();
+handleScenarioImport();
 
 // Update URL hash on any state change (debounced)
 let hashTimer = null;
