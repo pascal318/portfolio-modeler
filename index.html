@@ -879,29 +879,39 @@ function calcIRR(company, currentPPS, quarterEndDate) {
 }
 
 function calcWeightedMOIC(quarterIndex) {
-  let sum = 0;
   const q = quarters[quarterIndex];
+  let totalFV = 0;
+  let totalCost = 0;
   for (const co of companies) {
+    if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
-    const moic = calcMOIC(co, pps);
-    if (moic !== null) {
-      sum += co.weight * moic;
-    }
+    if (pps === null || pps === undefined || isNaN(pps)) continue;
+    const residual = co.totalCost * (pps / co.entryPPS);
+    totalFV += co.totalDistributions + residual;
+    totalCost += co.totalCost;
   }
-  return sum;
+  return totalCost > 0 ? totalFV / totalCost : null;
 }
 
 function calcWeightedIRR(quarterIndex) {
-  let sum = 0;
   const q = quarters[quarterIndex];
+  // Build combined cash flows from all active companies
+  let flows = [];
   for (const co of companies) {
+    if (!recyclingEnabled && co.isRecycling) continue;
     const pps = q.pps[co.name];
-    const irr = calcIRR(co, pps, q.endDate);
-    if (irr !== null) {
-      sum += co.weight * irr;
+    if (pps === null || pps === undefined || isNaN(pps)) continue;
+    // Add historical cash flows
+    for (const cf of co.cashFlows) {
+      flows.push({ date: cf.date, amount: cf.amount });
     }
+    // Add terminal value
+    const tv = co.totalCost * (pps / co.entryPPS);
+    if (tv > 0) flows.push({ date: q.endDate, amount: tv });
   }
-  return sum;
+  if (flows.length === 0) return null;
+  flows.sort((a, b) => new Date(a.date) - new Date(b.date));
+  return xirr(flows);
 }
 
 /**
@@ -1282,7 +1292,8 @@ function render() {
   }
 
   // Total / Weighted row
-  const totalCostSum = coreCompanies.reduce((s, c) => s + c.totalCost, 0);
+  const activeCos = recyclingEnabled ? companies : coreCompanies;
+  const totalCostSum = activeCos.reduce((s, c) => s + c.totalCost, 0);
   let totalRow = `<tr class="total-row">
     <td><strong>Total / Gross</strong></td>
     <td class="entry-col"><strong>${fmtCostM(totalCostSum)}</strong></td>
