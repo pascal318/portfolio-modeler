@@ -621,7 +621,14 @@
 </div>
 
 <div id="tab-overview" class="tab-content">
-  <div id="overview-content" style="margin-top:16px;"></div>
+  <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+    <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Include Historical Extrapolation:</label>
+    <label class="recycling-toggle" style="margin:0">
+      <input type="checkbox" checked onchange="historicalExtrapolationEnabled=this.checked;renderOverview()">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+    </label>
+  </div>
+  <div id="overview-content" style="margin-top:12px;"></div>
 </div>
 
 
@@ -916,6 +923,55 @@ const MGMT_FEE_RATE = 0.02;       // 2% p.a. on commitments
 const CARRY_RATE = 0.20;           // 20% carry on profits
 const ADDITIONAL_FEE_RATE = 0.03;  // 3% of commitments in additional fees
 const TOTAL_ADDITIONAL_FEES = TOTAL_COMMITMENTS * ADDITIONAL_FEE_RATE; // $2,654,583 (upfront)
+
+// Historical CAGRs for each company (used for Historical Extrapolation scenario)
+const COMPANY_CAGRS = {
+  "Databricks": 0.825,
+  "Gusto": 0.43,
+  "Stripe": 0.40,
+  "Canva": 0.39,
+  "Scale AI": 0.31,
+  "Netskope": 0.26,
+  "Grafana": 0.23,
+  "Cribl": 0.17,
+  "Arctic Wolf": 0.07,
+  "Chainalysis": -0.15
+};
+
+let historicalExtrapolationEnabled = true;
+
+function generateHistoricalExtrapolation() {
+  // Build quarters matching defaultQuarters structure, growing Q4 25' PPS by CAGR
+  const baseQ = defaultQuarters[0]; // Q4 25'
+  return defaultQuarters.map(q => {
+    const baseDate = new Date(baseQ.endDate);
+    const qDate = new Date(q.endDate);
+    const years = (qDate - baseDate) / (365.25 * 24 * 60 * 60 * 1000);
+    const pps = {};
+    for (const [name, basePPS] of Object.entries(q.pps)) {
+      if (basePPS === null) {
+        // Recycling: use parent CAGR if this quarter has a value in defaults
+        const parent = companies.find(c => c.name === name)?.parentName;
+        if (parent && defaultQuarters[0].pps[name] === null && q.pps[name] !== null) {
+          // Recycling starts mid-year, grow from parent's Q4 25' PPS
+          const parentBase = baseQ.pps[parent];
+          const cagr = COMPANY_CAGRS[parent] || 0;
+          pps[name] = parentBase !== null ? Math.round(parentBase * Math.pow(1 + cagr, years) * 100) / 100 : null;
+        } else {
+          pps[name] = null;
+        }
+        continue;
+      }
+      const cagr = COMPANY_CAGRS[name];
+      if (cagr !== undefined && years > 0) {
+        pps[name] = Math.round(baseQ.pps[name] * Math.pow(1 + cagr, years) * 100) / 100;
+      } else {
+        pps[name] = baseQ.pps[name]; // Q4 25' base or no CAGR
+      }
+    }
+    return { label: q.label, endDate: q.endDate, pps };
+  });
+}
 
 /**
  * Accrued mgmt fees as of a given date.
@@ -2208,25 +2264,50 @@ function renderOverview() {
   const container = document.getElementById('overview-content');
   if (!container) return;
 
-  const scenarios = loadScenarios();
-  if (scenarios.length < 2) {
+  const HIST_NAME = 'Historical Extrapolation';
+  const userScenarios = loadScenarios();
+
+  // Build all scenarios: user scenarios + optional historical extrapolation
+  let allScenarios = userScenarios.map(s => ({
+    name: s.name,
+    quarters: s.quarters,
+    isHistorical: false
+  }));
+
+  if (historicalExtrapolationEnabled) {
+    allScenarios.unshift({
+      name: HIST_NAME,
+      quarters: generateHistoricalExtrapolation(),
+      isHistorical: true
+    });
+  }
+
+  // Need at least 2 total scenarios to show overview
+  if (allScenarios.length < 2) {
     container.innerHTML = `
       <div class="overview-empty">
-        <p>Save at least 2 scenarios to see the Team Overview.</p>
+        <p>Save at least ${historicalExtrapolationEnabled ? '1 scenario' : '2 scenarios'} to see the Team Overview.</p>
         <p class="hint">Enter a name in the scenario bar above and click "Save" to snapshot your current PPS assumptions.<br>
         Have each team member fill in their own expectations, save under their name, then come here to compare.</p>
       </div>`;
     return;
   }
 
-  const scenarioData = scenarios.map(s => ({
+  // Compute metrics for all
+  const scenarioData = allScenarios.map(s => ({
     name: s.name,
     quarters: s.quarters,
+    isHistorical: s.isHistorical,
     metrics: computeMetricsForScenario(s.quarters)
   }));
 
+  // User-only scenarios for summary (exclude historical extrapolation)
+  const userScenarioData = scenarioData.filter(s => !s.isHistorical);
+  const coreCompanies = companies.filter(c => !c.isRecycling);
+
   const maxQLen = Math.max(...scenarioData.map(s => s.metrics.length));
   const labels = scenarioData.find(s => s.metrics.length === maxQLen).metrics.map(m => m.label);
+  const lastQLabel = labels[labels.length - 1];
 
   let html = '';
 
@@ -2235,10 +2316,86 @@ function renderOverview() {
   html += `<div class="overview-section-title">Performance Trajectories</div>`;
   html += `<div class="overview-charts-wrapper">`;
   html += `<div class="overview-chart-panel"><div class="chart-title">Gross TVPI by Scenario</div><canvas id="overview-chart-tvpi" class="chart-canvas" height="200"></canvas>`;
-  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}</div>`).join('')}</div></div>`;
+  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}${s.isHistorical ? ' (CAGR)' : ''}</div>`).join('')}</div></div>`;
   html += `<div class="overview-chart-panel"><div class="chart-title">Gross IRR by Scenario</div><canvas id="overview-chart-irr" class="chart-canvas" height="200"></canvas>`;
-  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}</div>`).join('')}</div></div>`;
+  html += `<div class="overview-legend">${scenarioData.map((s, i) => `<div class="overview-legend-item"><span class="overview-legend-dot" style="background:${SCENARIO_COLORS[i % SCENARIO_COLORS.length]}"></span> ${s.name}${s.isHistorical ? ' (CAGR)' : ''}</div>`).join('')}</div></div>`;
   html += `</div></div>`;
+
+  // --- Summary (moved to top, below charts; excludes historical extrapolation) ---
+  if (userScenarioData.length >= 2) {
+    const lastQMetrics = userScenarioData.map(s => ({
+      name: s.name,
+      tvpi: s.metrics[s.metrics.length - 1]?.grossTVPI,
+      netTvpi: s.metrics[s.metrics.length - 1]?.netTVPI,
+      irr: s.metrics[s.metrics.length - 1]?.grossIRR,
+      netIrr: s.metrics[s.metrics.length - 1]?.netIRR
+    })).filter(s => s.tvpi != null);
+
+    if (lastQMetrics.length >= 2) {
+      const sorted = [...lastQMetrics].sort((a, b) => (b.tvpi || 0) - (a.tvpi || 0));
+      const bull = sorted[0];
+      const bear = sorted[sorted.length - 1];
+
+      // Biggest PPS disagreement among user scenarios only
+      let biggestSpread = { company: '', quarter: '', spread: 0, min: 0, max: 0 };
+      for (const co of coreCompanies) {
+        for (let qi = 0; qi < maxQLen; qi++) {
+          const values = userScenarioData.map(s => {
+            const q = s.quarters[qi];
+            return q ? (q.pps[co.name] ?? null) : null;
+          }).filter(v => v !== null && !isNaN(v));
+          if (values.length < 2) continue;
+          const minV = Math.min(...values);
+          const maxV = Math.max(...values);
+          const mean = values.reduce((a, b) => a + b, 0) / values.length;
+          const spread = mean > 0 ? (maxV - minV) / mean * 100 : 0;
+          if (spread > biggestSpread.spread) {
+            biggestSpread = { company: co.name, quarter: labels[qi], spread, min: minV, max: maxV };
+          }
+        }
+      }
+
+      // Per-scenario bullish/bearish (user scenarios only)
+      const perScenario = userScenarioData.map((s) => {
+        let maxDev = { co: '', dev: -Infinity };
+        let minDev = { co: '', dev: Infinity };
+        for (const co of coreCompanies) {
+          const lastQ = s.quarters[s.quarters.length - 1];
+          if (!lastQ) continue;
+          const pps = lastQ.pps[co.name];
+          if (pps === null || pps === undefined || isNaN(pps)) continue;
+          const allPPS = userScenarioData.map(sc => {
+            const q = sc.quarters[sc.quarters.length - 1];
+            return q ? (q.pps[co.name] ?? null) : null;
+          }).filter(v => v !== null && !isNaN(v));
+          if (allPPS.length < 2) continue;
+          const avg = allPPS.reduce((a, b) => a + b, 0) / allPPS.length;
+          const dev = avg > 0 ? ((pps - avg) / avg * 100) : 0;
+          if (dev > maxDev.dev) maxDev = { co: co.name, dev };
+          if (dev < minDev.dev) minDev = { co: co.name, dev };
+        }
+        return { name: s.name, bullish: maxDev, bearish: minDev };
+      });
+
+      html += `<div class="overview-section">`;
+      html += `<div class="overview-section-title">Summary</div>`;
+      html += `<div class="overview-summary">`;
+      // Overall range
+      html += `Across ${userScenarioData.length} team scenarios, terminal Gross TVPI (${lastQLabel}) ranges from <span class="bear">${bear.tvpi.toFixed(2)}x</span> to <span class="bull">${bull.tvpi.toFixed(2)}x</span>.<br><br>`;
+      html += `<span class="bull">Most bullish:</span> <strong>${bull.name}</strong> (${bull.tvpi.toFixed(2)}x TVPI, ${bull.irr != null ? (bull.irr * 100).toFixed(1) + '% IRR' : '-'})<br>`;
+      html += `<span class="bear">Most conservative:</span> <strong>${bear.name}</strong> (${bear.tvpi.toFixed(2)}x TVPI, ${bear.irr != null ? (bear.irr * 100).toFixed(1) + '% IRR' : '-'})<br>`;
+      if (biggestSpread.spread > 0) {
+        html += `<strong>Biggest disagreement:</strong> ${biggestSpread.company} in ${biggestSpread.quarter} — PPS range $${biggestSpread.min.toFixed(2)} to $${biggestSpread.max.toFixed(2)} (${biggestSpread.spread.toFixed(0)}% spread)<br>`;
+      }
+      html += `<br>`;
+      for (const ps of perScenario) {
+        html += `<strong>${ps.name}</strong> is most bullish on <span class="bull">${ps.bullish.co}</span> (+${ps.bullish.dev.toFixed(0)}% vs avg)`;
+        if (ps.bearish.co) html += ` and most bearish on <span class="bear">${ps.bearish.co}</span> (${ps.bearish.dev.toFixed(0)}% vs avg)`;
+        html += `<br>`;
+      }
+      html += `</div></div>`;
+    }
+  }
 
   // --- Gross Metrics Table ---
   html += `<div class="overview-section">`;
@@ -2294,112 +2451,65 @@ function renderOverview() {
   }
   html += `</tbody></table></div></div>`;
 
-  // --- PPS Divergence Table ---
-  const coreCompanies = companies.filter(c => !c.isRecycling);
+  // --- Company End-State Comparison (collapsed: one row per company) ---
+  const lastQI = maxQLen - 1;
   html += `<div class="overview-section">`;
-  html += `<div class="overview-section-title">PPS Assumptions & Divergence</div>`;
-  html += `<div class="table-wrapper" style="overflow-x:auto"><table class="overview-table"><thead><tr><th>Company</th><th>Quarter</th>`;
+  html += `<div class="overview-section-title">Company Outlook Comparison (${lastQLabel})</div>`;
+  html += `<div class="table-wrapper" style="overflow-x:auto"><table class="overview-table"><thead><tr><th>Company</th><th>CAGR</th>`;
   for (const s of scenarioData) {
-    html += `<th>${s.name}</th>`;
+    html += `<th colspan="2" style="text-align:center;border-left:2px solid var(--border)">${s.name}</th>`;
   }
-  html += `<th>Spread</th></tr></thead><tbody>`;
+  html += `<th style="border-left:2px solid var(--border)">Most Bullish</th><th>Most Bearish</th>`;
+  html += `</tr><tr><th></th><th></th>`;
+  for (const s of scenarioData) {
+    html += `<th style="border-left:2px solid var(--border)">MOIC</th><th>PPS</th>`;
+  }
+  html += `<th style="border-left:2px solid var(--border)"></th><th></th>`;
+  html += `</tr></thead><tbody>`;
 
   for (const co of coreCompanies) {
-    for (let qi = 0; qi < maxQLen; qi++) {
-      const values = scenarioData.map(s => {
-        const q = s.quarters[qi];
-        return q ? (q.pps[co.name] ?? null) : null;
-      }).filter(v => v !== null && !isNaN(v));
-      if (values.length < 2) continue;
+    const cagr = COMPANY_CAGRS[co.name];
+    const cagrStr = cagr !== undefined ? (cagr >= 0 ? '+' : '') + (cagr * 100).toFixed(0) + '%' : '-';
+    const cagrColor = cagr !== undefined ? (cagr >= 0.3 ? 'var(--green)' : cagr < 0 ? 'var(--red)' : 'var(--text)') : '';
 
-      const minV = Math.min(...values);
-      const maxV = Math.max(...values);
-      const mean = values.reduce((a, b) => a + b, 0) / values.length;
-      const spread = mean > 0 ? ((maxV - minV) / mean * 100) : 0;
-      const isHigh = spread > 20;
+    // Collect end-state PPS per scenario
+    const endPPS = scenarioData.map(s => {
+      const q = s.quarters[lastQI];
+      return q ? (q.pps[co.name] ?? null) : null;
+    });
+    const validPPS = endPPS.filter(v => v !== null && !isNaN(v));
 
-      html += `<tr><td>${co.name}</td><td>${labels[qi]}</td>`;
-      for (const s of scenarioData) {
-        const q = s.quarters[qi];
-        const pps = q ? (q.pps[co.name] ?? null) : null;
-        const isMax = pps === maxV && isHigh;
-        const isMin = pps === minV && isHigh;
-        const style = isMax ? ' style="color:var(--green)"' : (isMin ? ' style="color:var(--red)"' : '');
-        html += `<td${style}>${pps !== null ? '$' + pps.toFixed(2) : '-'}</td>`;
+    // Find most bullish/bearish among user scenarios only
+    let bullName = '-', bearName = '-';
+    const userEndPPS = userScenarioData.map(s => {
+      const q = s.quarters[lastQI];
+      return { name: s.name, pps: q ? (q.pps[co.name] ?? null) : null };
+    }).filter(s => s.pps !== null && !isNaN(s.pps));
+
+    if (userEndPPS.length >= 2) {
+      const sorted = [...userEndPPS].sort((a, b) => b.pps - a.pps);
+      if (sorted[0].pps !== sorted[sorted.length - 1].pps) {
+        bullName = sorted[0].name;
+        bearName = sorted[sorted.length - 1].name;
       }
-      html += `<td${isHigh ? ' class="divergence-high"' : ''}>${spread.toFixed(0)}%</td>`;
-      html += `</tr>`;
     }
+
+    html += `<tr><td><strong>${co.name}</strong></td>`;
+    html += `<td style="color:${cagrColor}">${cagrStr}</td>`;
+    for (let si = 0; si < scenarioData.length; si++) {
+      const pps = endPPS[si];
+      const moic = pps !== null ? calcMOIC(co, pps) : null;
+      const moicStr = moic !== null ? moic.toFixed(2) + 'x' : '-';
+      const ppsStr = pps !== null ? '$' + pps.toFixed(2) : '-';
+      const moicColor = moic !== null ? (moic >= 1.8 ? 'color:var(--green)' : moic < 1.0 ? 'color:var(--red)' : '') : '';
+      html += `<td style="border-left:2px solid var(--border);${moicColor}">${moicStr}</td>`;
+      html += `<td>${ppsStr}</td>`;
+    }
+    html += `<td style="border-left:2px solid var(--border);color:var(--green)">${bullName}</td>`;
+    html += `<td style="color:var(--red)">${bearName}</td>`;
+    html += `</tr>`;
   }
   html += `</tbody></table></div></div>`;
-
-  // --- Key Differences Summary ---
-  const lastQMetrics = scenarioData.map(s => ({
-    name: s.name,
-    tvpi: s.metrics[s.metrics.length - 1]?.grossTVPI,
-    irr: s.metrics[s.metrics.length - 1]?.grossIRR
-  })).filter(s => s.tvpi != null);
-
-  if (lastQMetrics.length >= 2) {
-    const sorted = [...lastQMetrics].sort((a, b) => (b.tvpi || 0) - (a.tvpi || 0));
-    const bull = sorted[0];
-    const bear = sorted[sorted.length - 1];
-
-    let biggestSpread = { company: '', quarter: '', spread: 0, min: 0, max: 0 };
-    for (const co of coreCompanies) {
-      for (let qi = 0; qi < maxQLen; qi++) {
-        const values = scenarioData.map(s => {
-          const q = s.quarters[qi];
-          return q ? (q.pps[co.name] ?? null) : null;
-        }).filter(v => v !== null && !isNaN(v));
-        if (values.length < 2) continue;
-        const minV = Math.min(...values);
-        const maxV = Math.max(...values);
-        const mean = values.reduce((a, b) => a + b, 0) / values.length;
-        const spread = mean > 0 ? (maxV - minV) / mean * 100 : 0;
-        if (spread > biggestSpread.spread) {
-          biggestSpread = { company: co.name, quarter: labels[qi], spread, min: minV, max: maxV };
-        }
-      }
-    }
-
-    const perScenario = scenarioData.map((s) => {
-      let maxDev = { co: '', dev: -Infinity };
-      let minDev = { co: '', dev: Infinity };
-      for (const co of coreCompanies) {
-        const lastQ = s.quarters[s.quarters.length - 1];
-        if (!lastQ) continue;
-        const pps = lastQ.pps[co.name];
-        if (pps === null || pps === undefined || isNaN(pps)) continue;
-        const allPPS = scenarioData.map(sc => {
-          const q = sc.quarters[sc.quarters.length - 1];
-          return q ? (q.pps[co.name] ?? null) : null;
-        }).filter(v => v !== null && !isNaN(v));
-        if (allPPS.length < 2) continue;
-        const avg = allPPS.reduce((a, b) => a + b, 0) / allPPS.length;
-        const dev = avg > 0 ? ((pps - avg) / avg * 100) : 0;
-        if (dev > maxDev.dev) maxDev = { co: co.name, dev };
-        if (dev < minDev.dev) minDev = { co: co.name, dev };
-      }
-      return { name: s.name, bullish: maxDev, bearish: minDev };
-    });
-
-    html += `<div class="overview-section">`;
-    html += `<div class="overview-section-title">Key Differences</div>`;
-    html += `<div class="overview-summary">`;
-    html += `<span class="bull">Most bullish:</span> <strong>${bull.name}</strong> (terminal Gross TVPI: ${bull.tvpi.toFixed(2)}x${bull.irr != null ? ', IRR: ' + (bull.irr * 100).toFixed(1) + '%' : ''})<br>`;
-    html += `<span class="bear">Most conservative:</span> <strong>${bear.name}</strong> (terminal Gross TVPI: ${bear.tvpi.toFixed(2)}x${bear.irr != null ? ', IRR: ' + (bear.irr * 100).toFixed(1) + '%' : ''})<br>`;
-    if (biggestSpread.spread > 0) {
-      html += `<strong>Biggest disagreement:</strong> ${biggestSpread.company} in ${biggestSpread.quarter} — PPS range $${biggestSpread.min.toFixed(2)} to $${biggestSpread.max.toFixed(2)} (${biggestSpread.spread.toFixed(0)}% spread)<br>`;
-    }
-    html += `<br>`;
-    for (const ps of perScenario) {
-      html += `<strong>${ps.name}</strong> is most bullish on <span class="bull">${ps.bullish.co}</span> (+${ps.bullish.dev.toFixed(0)}% above avg)`;
-      if (ps.bearish.co) html += ` and most bearish on <span class="bear">${ps.bearish.co}</span> (${ps.bearish.dev.toFixed(0)}% below avg)`;
-      html += `<br>`;
-    }
-    html += `</div></div>`;
-  }
 
   container.innerHTML = html;
 
@@ -2408,14 +2518,14 @@ function renderOverview() {
     const tvpiSeries = scenarioData.map((s, i) => ({
       data: s.metrics.map(m => m.grossTVPI),
       color: SCENARIO_COLORS[i % SCENARIO_COLORS.length],
-      dashed: false
+      dashed: s.isHistorical
     }));
     drawOverviewChart('overview-chart-tvpi', tvpiSeries, v => v.toFixed(2) + 'x', labels);
 
     const irrSeries = scenarioData.map((s, i) => ({
       data: s.metrics.map(m => m.grossIRR),
       color: SCENARIO_COLORS[i % SCENARIO_COLORS.length],
-      dashed: false
+      dashed: s.isHistorical
     }));
     drawOverviewChart('overview-chart-irr', irrSeries, v => (v * 100).toFixed(1) + '%', labels);
   }, 50);
