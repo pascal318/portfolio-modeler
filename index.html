@@ -571,6 +571,8 @@
     <option value="">-- Load scenario --</option>
   </select>
   <button class="action-btn secondary" onclick="onDeleteScenario()">Delete</button>
+  <div class="scenario-divider"></div>
+  <button class="action-btn secondary" onclick="exportAllScenarios()" title="Copy a link that includes ALL saved scenarios for teammates">&#128279; Share All Scenarios</button>
 </div>
 <div id="scenario-toast" class="scenario-toast"></div>
 
@@ -2054,6 +2056,27 @@ function onDeleteScenario() {
   showScenarioToast(`Deleted scenario "${name}"`);
 }
 
+function exportAllScenarios() {
+  const scenarios = loadScenarios();
+  if (scenarios.length === 0) {
+    showScenarioToast('No scenarios to share');
+    return;
+  }
+  try {
+    const json = JSON.stringify(scenarios);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    const base = window.location.origin + window.location.pathname;
+    const url = base + '?import_all=' + encoded;
+    navigator.clipboard.writeText(url).then(() => {
+      showScenarioToast(`Copied link with ${scenarios.length} scenario(s)`);
+    }).catch(() => {
+      prompt('Copy this link to share all scenarios:', url);
+    });
+  } catch (e) {
+    showScenarioToast('Error creating share link');
+  }
+}
+
 // ============================================================
 // COMPUTE METRICS FOR ARBITRARY SCENARIO
 // ============================================================
@@ -2416,14 +2439,40 @@ function syncRecyclingPPS() {
   }
 }
 
-// Handle scenario import from URL: ?scenario=NAME
+// Handle scenario import from URL
 function handleScenarioImport() {
   const params = new URLSearchParams(window.location.search);
+
+  // Bulk import: ?import_all=base64
+  const importAll = params.get('import_all');
+  if (importAll) {
+    try {
+      const json = decodeURIComponent(escape(atob(importAll)));
+      const imported = JSON.parse(json);
+      if (Array.isArray(imported) && imported.length > 0) {
+        const existing = loadScenarios();
+        for (const s of imported) {
+          if (!s.name || !s.quarters) continue;
+          const idx = existing.findIndex(e => e.name === s.name);
+          if (idx >= 0) existing[idx] = s;
+          else existing.push(s);
+        }
+        saveScenarios(existing);
+        refreshScenarioDropdown();
+        showScenarioToast(`Imported ${imported.length} scenario(s)`);
+      }
+    } catch (e) { /* invalid data */ }
+    const url = new URL(window.location);
+    url.searchParams.delete('import_all');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    return;
+  }
+
+  // Single import: ?scenario=NAME (with hash data)
   const scenarioName = params.get('scenario');
   if (scenarioName && window.location.hash) {
     saveCurrentAsScenario(scenarioName);
     showScenarioToast(`Imported scenario "${scenarioName}"`);
-    // Clean URL
     const url = new URL(window.location);
     url.searchParams.delete('scenario');
     history.replaceState(null, '', url.pathname + url.hash);
