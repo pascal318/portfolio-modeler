@@ -1,5 +1,5 @@
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY index.html /usr/share/nginx/html/index.html
-ENV PORT=8080
-EXPOSE 8080
+ENV PORT=80
+EXPOSE 80
